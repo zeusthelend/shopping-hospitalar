@@ -1,4 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
+import officialLogo from "@/assets/shopping-hospitalar-logo.jpeg.asset.json";
 import { supabase } from "@/integrations/supabase/client";
 import { cn } from "@/lib/utils";
 
@@ -14,20 +15,14 @@ export function useSettings() {
 
 export function Logo({ className, light }: { className?: string; light?: boolean }) {
   const { data } = useSettings();
-  if (data?.logo_url)
-    return <img src={data.logo_url} alt={data.company_name} className={cn("h-10 w-auto object-contain", className)} />;
+  const logoUrl = data?.logo_url ?? officialLogo.url;
+
   return (
-    <div className={cn("flex items-center gap-2.5", className)}>
-      <div className="grid h-9 w-9 place-items-center rounded-lg bg-highlight font-display text-lg font-bold text-highlight-foreground">
-        +
-      </div>
-      <div className="leading-tight">
-        <div className={cn("font-display text-sm font-bold uppercase tracking-wide", light ? "text-sidebar-foreground" : "text-foreground")}>
-          Shopping
-        </div>
-        <div className="font-display text-xs font-semibold uppercase tracking-[0.2em] text-highlight">Hospitalar</div>
-      </div>
-    </div>
+    <img
+      src={logoUrl}
+      alt={data?.company_name ?? "Shopping Hospitalar"}
+      className={cn("h-12 w-12 rounded-full object-cover", light && "ring-1 ring-sidebar-border", className)}
+    />
   );
 }
 
