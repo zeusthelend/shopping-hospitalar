@@ -18,6 +18,7 @@ import { Route as AuthenticatedAvisosRouteImport } from './routes/_authenticated
 import { Route as AuthenticatedChatRouteImport } from './routes/_authenticated/chat'
 import { Route as AuthenticatedConfiguracoesRouteImport } from './routes/_authenticated/configuracoes'
 import { Route as AuthenticatedDashboardRouteImport } from './routes/_authenticated/dashboard'
+import { Route as AuthenticatedDavsRouteImport } from './routes/_authenticated/davs'
 import { Route as AuthenticatedDocumentosRouteImport } from './routes/_authenticated/documentos'
 import { Route as AuthenticatedFuncionariosRouteImport } from './routes/_authenticated/funcionarios'
 import { Route as AuthenticatedNotificacoesRouteImport } from './routes/_authenticated/notificacoes'
@@ -70,6 +71,11 @@ const AuthenticatedDashboardRoute = AuthenticatedDashboardRouteImport.update({
   path: '/dashboard',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const AuthenticatedDavsRoute = AuthenticatedDavsRouteImport.update({
+  id: '/davs',
+  path: '/davs',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
 const AuthenticatedDocumentosRoute = AuthenticatedDocumentosRouteImport.update({
   id: '/documentos',
   path: '/documentos',
@@ -113,6 +119,7 @@ export interface FileRoutesByFullPath {
   '/chat': typeof AuthenticatedChatRoute
   '/configuracoes': typeof AuthenticatedConfiguracoesRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
+  '/davs': typeof AuthenticatedDavsRoute
   '/documentos': typeof AuthenticatedDocumentosRoute
   '/funcionarios': typeof AuthenticatedFuncionariosRoute
   '/notificacoes': typeof AuthenticatedNotificacoesRoute
@@ -129,6 +136,7 @@ export interface FileRoutesByTo {
   '/chat': typeof AuthenticatedChatRoute
   '/configuracoes': typeof AuthenticatedConfiguracoesRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
+  '/davs': typeof AuthenticatedDavsRoute
   '/documentos': typeof AuthenticatedDocumentosRoute
   '/funcionarios': typeof AuthenticatedFuncionariosRoute
   '/notificacoes': typeof AuthenticatedNotificacoesRoute
@@ -147,6 +155,7 @@ export interface FileRoutesById {
   '/_authenticated/chat': typeof AuthenticatedChatRoute
   '/_authenticated/configuracoes': typeof AuthenticatedConfiguracoesRoute
   '/_authenticated/dashboard': typeof AuthenticatedDashboardRoute
+  '/_authenticated/davs': typeof AuthenticatedDavsRoute
   '/_authenticated/documentos': typeof AuthenticatedDocumentosRoute
   '/_authenticated/funcionarios': typeof AuthenticatedFuncionariosRoute
   '/_authenticated/notificacoes': typeof AuthenticatedNotificacoesRoute
@@ -165,6 +174,7 @@ export interface FileRouteTypes {
     | '/chat'
     | '/configuracoes'
     | '/dashboard'
+    | '/davs'
     | '/documentos'
     | '/funcionarios'
     | '/notificacoes'
@@ -181,6 +191,7 @@ export interface FileRouteTypes {
     | '/chat'
     | '/configuracoes'
     | '/dashboard'
+    | '/davs'
     | '/documentos'
     | '/funcionarios'
     | '/notificacoes'
@@ -198,6 +209,7 @@ export interface FileRouteTypes {
     | '/_authenticated/chat'
     | '/_authenticated/configuracoes'
     | '/_authenticated/dashboard'
+    | '/_authenticated/davs'
     | '/_authenticated/documentos'
     | '/_authenticated/funcionarios'
     | '/_authenticated/notificacoes'
@@ -278,6 +290,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedDashboardRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/davs': {
+      id: '/_authenticated/davs'
+      path: '/davs'
+      fullPath: '/davs'
+      preLoaderRoute: typeof AuthenticatedDavsRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/documentos': {
       id: '/_authenticated/documentos'
       path: '/documentos'
@@ -329,6 +348,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedChatRoute: typeof AuthenticatedChatRoute
   AuthenticatedConfiguracoesRoute: typeof AuthenticatedConfiguracoesRoute
   AuthenticatedDashboardRoute: typeof AuthenticatedDashboardRoute
+  AuthenticatedDavsRoute: typeof AuthenticatedDavsRoute
   AuthenticatedDocumentosRoute: typeof AuthenticatedDocumentosRoute
   AuthenticatedFuncionariosRoute: typeof AuthenticatedFuncionariosRoute
   AuthenticatedNotificacoesRoute: typeof AuthenticatedNotificacoesRoute
@@ -343,6 +363,7 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedChatRoute: AuthenticatedChatRoute,
   AuthenticatedConfiguracoesRoute: AuthenticatedConfiguracoesRoute,
   AuthenticatedDashboardRoute: AuthenticatedDashboardRoute,
+  AuthenticatedDavsRoute: AuthenticatedDavsRoute,
   AuthenticatedDocumentosRoute: AuthenticatedDocumentosRoute,
   AuthenticatedFuncionariosRoute: AuthenticatedFuncionariosRoute,
   AuthenticatedNotificacoesRoute: AuthenticatedNotificacoesRoute,

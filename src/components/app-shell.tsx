@@ -1,8 +1,8 @@
 import { Link, useNavigate } from "@tanstack/react-router";
 import { useQueryClient } from "@tanstack/react-query";
-import { useEffect, useState, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import {
-  Home, Users, MessageSquare, FolderOpen, CalendarDays, Megaphone, Newspaper, Bell, User, Settings, Wrench, LogOut, Moon, Sun, Menu,
+  Home, Users, MessageSquare, FolderOpen, Files, CalendarDays, Megaphone, Newspaper, Bell, User, Settings, Wrench, LogOut, Moon, Sun, Menu,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useMe, ROLE_LABEL } from "@/lib/auth";
@@ -16,6 +16,7 @@ const NAV = [
   { to: "/funcionarios", label: "Funcionários", icon: Users },
   { to: "/chat", label: "Chat", icon: MessageSquare },
   { to: "/documentos", label: "Documentos", icon: FolderOpen },
+  { to: "/davs", label: "DAVs", icon: Files },
   { to: "/reunioes", label: "Reuniões", icon: CalendarDays },
   { to: "/avisos", label: "Avisos", icon: Megaphone },
   { to: "/publicacoes", label: "Publicações", icon: Newspaper },
@@ -50,12 +51,30 @@ export function AppShell({ children }: { children: ReactNode }) {
   const nav = useNavigate();
   const [open, setOpen] = useState(false);
   const [dark, setDark] = useState(false);
+  const presenceSoundEnabled = useRef(true);
 
   useEffect(() => setDark(document.documentElement.classList.contains("dark")), []);
   useEffect(() => {
     if (!me?.profile) return;
     supabase.from("profiles").update({ last_seen_at: new Date().toISOString(), ...(me.profile.status === "offline" ? { status: "online" as const } : {}) }).eq("id", me.profile.id).then(() => {});
   }, [me?.profile?.id]);
+  useEffect(() => {
+    if (!me?.profile) return;
+    supabase.from("notification_preferences").select("presence_sound_enabled,dav_push_enabled").eq("user_id",me.profile.id).maybeSingle().then(({data})=>{presenceSoundEnabled.current=data?.presence_sound_enabled??true;});
+    const channel=supabase.channel("team-presence-alerts").on("postgres_changes",{event:"UPDATE",schema:"public",table:"profiles"},payload=>{
+      const oldStatus=(payload.old as {status?:string}).status;
+      const next=payload.new as {id?:string;status?:string;full_name?:string};
+      if(next.id!==me.profile?.id&&oldStatus==="offline"&&next.status==="online"&&presenceSoundEnabled.current){
+        const AudioContextClass=window.AudioContext;
+        const context=new AudioContextClass();const oscillator=context.createOscillator();const gain=context.createGain();oscillator.frequency.value=740;gain.gain.setValueAtTime(.12,context.currentTime);gain.gain.exponentialRampToValueAtTime(.001,context.currentTime+.18);oscillator.connect(gain);gain.connect(context.destination);oscillator.start();oscillator.stop(context.currentTime+.18);
+      }
+    }).subscribe();
+    return()=>{void supabase.removeChannel(channel)};
+  },[me?.profile?.id]);
+  useEffect(()=>{
+    if(!me?.profile)return;
+    const check=async()=>{const{data:preference}=await supabase.from("notification_preferences").select("dav_push_enabled").eq("user_id",me.profile?.id??"").maybeSingle();if(preference?.dav_push_enabled===false||!("Notification" in window)||Notification.permission!=="granted")return;const{data}=await supabase.from("davs").select("id,dav_number,client_name").lt("due_at",new Date().toISOString()).not("status","in",'(concluido,cancelado)');for(const dav of data??[]){const key=`dav-notified:${me.profile?.id}:${dav.id}`;if(localStorage.getItem(key))continue;new Notification(`DAV vencido: ${dav.dav_number}`,{body:dav.client_name,icon:"/icon-192.png",tag:`dav-${dav.id}`});localStorage.setItem(key,"1");}};void check();const timer=window.setInterval(()=>void check(),60_000);return()=>window.clearInterval(timer);
+  },[me?.profile?.id]);
 
   function toggleTheme() {
     const d = !dark;
