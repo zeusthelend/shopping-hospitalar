@@ -8,6 +8,13 @@
       "when": 1790911655852,
       "tag": "0000_migration",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1790913248890,
+      "tag": "0001_add_dav_and_notification_features",
+      "breakpoints": true
     }
   ]
 }

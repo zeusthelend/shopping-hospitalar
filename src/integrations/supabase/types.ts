@@ -89,6 +89,115 @@ export type Database = {
         }
         Relationships: []
       }
+      dav_alert_deliveries: {
+        Row: {
+          dav_id: string
+          delivered_at: string
+          id: string
+          user_id: string
+        }
+        Insert: {
+          dav_id: string
+          delivered_at?: string
+          id?: string
+          user_id: string
+        }
+        Update: {
+          dav_id?: string
+          delivered_at?: string
+          id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "dav_alert_deliveries_dav_id_fkey"
+            columns: ["dav_id"]
+            isOneToOne: false
+            referencedRelation: "davs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      dav_attachments: {
+        Row: {
+          created_at: string
+          dav_id: string
+          file_name: string
+          file_path: string
+          file_size: number
+          id: string
+          mime_type: string
+          uploaded_by: string
+        }
+        Insert: {
+          created_at?: string
+          dav_id: string
+          file_name: string
+          file_path: string
+          file_size: number
+          id?: string
+          mime_type: string
+          uploaded_by: string
+        }
+        Update: {
+          created_at?: string
+          dav_id?: string
+          file_name?: string
+          file_path?: string
+          file_size?: number
+          id?: string
+          mime_type?: string
+          uploaded_by?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "dav_attachments_dav_id_fkey"
+            columns: ["dav_id"]
+            isOneToOne: false
+            referencedRelation: "davs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      davs: {
+        Row: {
+          client_name: string
+          created_at: string
+          created_by: string
+          dav_number: string
+          description: string
+          due_at: string
+          id: string
+          seller_id: string
+          status: Database["public"]["Enums"]["dav_status"]
+          updated_at: string
+        }
+        Insert: {
+          client_name: string
+          created_at?: string
+          created_by: string
+          dav_number: string
+          description?: string
+          due_at: string
+          id?: string
+          seller_id: string
+          status?: Database["public"]["Enums"]["dav_status"]
+          updated_at?: string
+        }
+        Update: {
+          client_name?: string
+          created_at?: string
+          created_by?: string
+          dav_number?: string
+          description?: string
+          due_at?: string
+          id?: string
+          seller_id?: string
+          status?: Database["public"]["Enums"]["dav_status"]
+          updated_at?: string
+        }
+        Relationships: []
+      }
       departments: {
         Row: {
           created_at: string
@@ -170,6 +279,27 @@ export type Database = {
           organizer_id?: string | null
           starts_at?: string
           title?: string
+        }
+        Relationships: []
+      }
+      notification_preferences: {
+        Row: {
+          dav_push_enabled: boolean
+          presence_sound_enabled: boolean
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          dav_push_enabled?: boolean
+          presence_sound_enabled?: boolean
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          dav_push_enabled?: boolean
+          presence_sound_enabled?: boolean
+          updated_at?: string
+          user_id?: string
         }
         Relationships: []
       }
@@ -293,6 +423,36 @@ export type Database = {
           },
         ]
       }
+      push_subscriptions: {
+        Row: {
+          auth: string
+          created_at: string
+          endpoint: string
+          id: string
+          p256dh: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          auth: string
+          created_at?: string
+          endpoint: string
+          id?: string
+          p256dh: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          auth?: string
+          created_at?: string
+          endpoint?: string
+          id?: string
+          p256dh?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       user_roles: {
         Row: {
           id: string
@@ -327,6 +487,7 @@ export type Database = {
     }
     Enums: {
       app_role: "admin" | "diretor" | "gerente" | "funcionario"
+      dav_status: "aberto" | "em_andamento" | "concluido" | "cancelado"
       user_status: "online" | "offline" | "ausente" | "ocupado"
     }
     CompositeTypes: {
@@ -456,6 +617,7 @@ export const Constants = {
   public: {
     Enums: {
       app_role: ["admin", "diretor", "gerente", "funcionario"],
+      dav_status: ["aberto", "em_andamento", "concluido", "cancelado"],
       user_status: ["online", "offline", "ausente", "ocupado"],
     },
   },
