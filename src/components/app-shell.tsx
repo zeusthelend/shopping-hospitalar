@@ -2,7 +2,7 @@ import { Link, useNavigate } from "@tanstack/react-router";
 import { useQueryClient } from "@tanstack/react-query";
 import { useEffect, useState, type ReactNode } from "react";
 import {
-  Home, Users, MessageSquare, FolderOpen, CalendarDays, Megaphone, Newspaper, Bell, User, Settings, Wrench, LogOut, Moon, Sun, Menu,
+  Home, Users, MessageSquare, FolderOpen, Files, CalendarDays, Megaphone, Newspaper, Bell, User, Settings, Wrench, LogOut, Moon, Sun, Menu,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useMe, ROLE_LABEL } from "@/lib/auth";
@@ -16,6 +16,7 @@ const NAV = [
   { to: "/funcionarios", label: "Funcionários", icon: Users },
   { to: "/chat", label: "Chat", icon: MessageSquare },
   { to: "/documentos", label: "Documentos", icon: FolderOpen },
+  { to: "/davs", label: "DAVs", icon: Files },
   { to: "/reunioes", label: "Reuniões", icon: CalendarDays },
   { to: "/avisos", label: "Avisos", icon: Megaphone },
   { to: "/publicacoes", label: "Publicações", icon: Newspaper },
