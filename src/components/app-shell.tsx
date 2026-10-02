@@ -24,7 +24,7 @@ const NAV = [
   { to: "/configuracoes", label: "Configurações", icon: Settings },
 ] as const;
 
-function NavList({ isAdmin, onNavigate }: { isAdmin: boolean; onNavigate?: () => void }) {
+function NavList({ isAdmin, onNavigate }: { isAdmin: boolean; onNavigate?: (() => void) | undefined }) {
   const items = isAdmin ? [...NAV, { to: "/admin", label: "Administração", icon: Wrench } as const] : NAV;
   return (
     <nav className="flex flex-col gap-1">
