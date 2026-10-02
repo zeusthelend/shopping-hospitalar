@@ -1,6 +1,8 @@
 # Roadmap
 
-- [x] Ativar banco de dados e autenticação
-- [x] Criar estrutura de usuários, cargos, departamentos e permissões
-- [x] Concluir dashboard e páginas da primeira etapa
-- [x] Validar acesso público e visual; fluxo autenticado aguarda um usuário confirmado
+- [ ] Recomendação de funcionários por IA para gestores
+- [ ] Exportação CSV de funcionários com cargos e departamentos
+- [ ] Cadastro e agendamento de reuniões
+- [ ] Cadastro, busca e anexos de DAVs
+- [ ] Alertas de DAVs vencidos e presença online
+- [ ] Validar fluxos em celular e computador
