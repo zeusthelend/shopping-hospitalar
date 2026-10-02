@@ -8,3 +8,5 @@
 > Commits you push to the connected branch sync back to Lovable and show up in
 > the editor, so keep the branch in a working state.
 <!-- LOVABLE:END -->
+- Use Lovable Cloud with row-level policies for persistent corporate data and authorization.
+- Keep authenticated application pages under the shared protected layout.
