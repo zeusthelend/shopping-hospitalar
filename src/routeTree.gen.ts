@@ -13,9 +13,17 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as ResetPasswordRouteImport } from './routes/reset-password'
+import { Route as AuthenticatedAdminRouteImport } from './routes/_authenticated/admin'
+import { Route as AuthenticatedAvisosRouteImport } from './routes/_authenticated/avisos'
+import { Route as AuthenticatedChatRouteImport } from './routes/_authenticated/chat'
+import { Route as AuthenticatedConfiguracoesRouteImport } from './routes/_authenticated/configuracoes'
 import { Route as AuthenticatedDashboardRouteImport } from './routes/_authenticated/dashboard'
+import { Route as AuthenticatedDocumentosRouteImport } from './routes/_authenticated/documentos'
 import { Route as AuthenticatedFuncionariosRouteImport } from './routes/_authenticated/funcionarios'
+import { Route as AuthenticatedNotificacoesRouteImport } from './routes/_authenticated/notificacoes'
 import { Route as AuthenticatedPerfilRouteImport } from './routes/_authenticated/perfil'
+import { Route as AuthenticatedPublicacoesRouteImport } from './routes/_authenticated/publicacoes'
+import { Route as AuthenticatedReunioesRouteImport } from './routes/_authenticated/reunioes'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -36,9 +44,35 @@ const ResetPasswordRoute = ResetPasswordRouteImport.update({
   path: '/reset-password',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AuthenticatedAdminRoute = AuthenticatedAdminRouteImport.update({
+  id: '/admin',
+  path: '/admin',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const AuthenticatedAvisosRoute = AuthenticatedAvisosRouteImport.update({
+  id: '/avisos',
+  path: '/avisos',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const AuthenticatedChatRoute = AuthenticatedChatRouteImport.update({
+  id: '/chat',
+  path: '/chat',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const AuthenticatedConfiguracoesRoute =
+  AuthenticatedConfiguracoesRouteImport.update({
+    id: '/configuracoes',
+    path: '/configuracoes',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
 const AuthenticatedDashboardRoute = AuthenticatedDashboardRouteImport.update({
   id: '/dashboard',
   path: '/dashboard',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const AuthenticatedDocumentosRoute = AuthenticatedDocumentosRouteImport.update({
+  id: '/documentos',
+  path: '/documentos',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
 const AuthenticatedFuncionariosRoute =
@@ -47,9 +81,26 @@ const AuthenticatedFuncionariosRoute =
     path: '/funcionarios',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
+const AuthenticatedNotificacoesRoute =
+  AuthenticatedNotificacoesRouteImport.update({
+    id: '/notificacoes',
+    path: '/notificacoes',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
 const AuthenticatedPerfilRoute = AuthenticatedPerfilRouteImport.update({
   id: '/perfil',
   path: '/perfil',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const AuthenticatedPublicacoesRoute =
+  AuthenticatedPublicacoesRouteImport.update({
+    id: '/publicacoes',
+    path: '/publicacoes',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
+const AuthenticatedReunioesRoute = AuthenticatedReunioesRouteImport.update({
+  id: '/reunioes',
+  path: '/reunioes',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
 
@@ -57,17 +108,33 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
   '/reset-password': typeof ResetPasswordRoute
+  '/admin': typeof AuthenticatedAdminRoute
+  '/avisos': typeof AuthenticatedAvisosRoute
+  '/chat': typeof AuthenticatedChatRoute
+  '/configuracoes': typeof AuthenticatedConfiguracoesRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
+  '/documentos': typeof AuthenticatedDocumentosRoute
   '/funcionarios': typeof AuthenticatedFuncionariosRoute
+  '/notificacoes': typeof AuthenticatedNotificacoesRoute
   '/perfil': typeof AuthenticatedPerfilRoute
+  '/publicacoes': typeof AuthenticatedPublicacoesRoute
+  '/reunioes': typeof AuthenticatedReunioesRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
   '/reset-password': typeof ResetPasswordRoute
+  '/admin': typeof AuthenticatedAdminRoute
+  '/avisos': typeof AuthenticatedAvisosRoute
+  '/chat': typeof AuthenticatedChatRoute
+  '/configuracoes': typeof AuthenticatedConfiguracoesRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
+  '/documentos': typeof AuthenticatedDocumentosRoute
   '/funcionarios': typeof AuthenticatedFuncionariosRoute
+  '/notificacoes': typeof AuthenticatedNotificacoesRoute
   '/perfil': typeof AuthenticatedPerfilRoute
+  '/publicacoes': typeof AuthenticatedPublicacoesRoute
+  '/reunioes': typeof AuthenticatedReunioesRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -75,9 +142,17 @@ export interface FileRoutesById {
   '/_authenticated': typeof AuthenticatedRouteRouteWithChildren
   '/auth': typeof AuthRoute
   '/reset-password': typeof ResetPasswordRoute
+  '/_authenticated/admin': typeof AuthenticatedAdminRoute
+  '/_authenticated/avisos': typeof AuthenticatedAvisosRoute
+  '/_authenticated/chat': typeof AuthenticatedChatRoute
+  '/_authenticated/configuracoes': typeof AuthenticatedConfiguracoesRoute
   '/_authenticated/dashboard': typeof AuthenticatedDashboardRoute
+  '/_authenticated/documentos': typeof AuthenticatedDocumentosRoute
   '/_authenticated/funcionarios': typeof AuthenticatedFuncionariosRoute
+  '/_authenticated/notificacoes': typeof AuthenticatedNotificacoesRoute
   '/_authenticated/perfil': typeof AuthenticatedPerfilRoute
+  '/_authenticated/publicacoes': typeof AuthenticatedPublicacoesRoute
+  '/_authenticated/reunioes': typeof AuthenticatedReunioesRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -85,26 +160,50 @@ export interface FileRouteTypes {
     | '/'
     | '/auth'
     | '/reset-password'
+    | '/admin'
+    | '/avisos'
+    | '/chat'
+    | '/configuracoes'
     | '/dashboard'
+    | '/documentos'
     | '/funcionarios'
+    | '/notificacoes'
     | '/perfil'
+    | '/publicacoes'
+    | '/reunioes'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
     | '/auth'
     | '/reset-password'
+    | '/admin'
+    | '/avisos'
+    | '/chat'
+    | '/configuracoes'
     | '/dashboard'
+    | '/documentos'
     | '/funcionarios'
+    | '/notificacoes'
     | '/perfil'
+    | '/publicacoes'
+    | '/reunioes'
   id:
     | '__root__'
     | '/'
     | '/_authenticated'
     | '/auth'
     | '/reset-password'
+    | '/_authenticated/admin'
+    | '/_authenticated/avisos'
+    | '/_authenticated/chat'
+    | '/_authenticated/configuracoes'
     | '/_authenticated/dashboard'
+    | '/_authenticated/documentos'
     | '/_authenticated/funcionarios'
+    | '/_authenticated/notificacoes'
     | '/_authenticated/perfil'
+    | '/_authenticated/publicacoes'
+    | '/_authenticated/reunioes'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -144,11 +243,46 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ResetPasswordRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/_authenticated/admin': {
+      id: '/_authenticated/admin'
+      path: '/admin'
+      fullPath: '/admin'
+      preLoaderRoute: typeof AuthenticatedAdminRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/avisos': {
+      id: '/_authenticated/avisos'
+      path: '/avisos'
+      fullPath: '/avisos'
+      preLoaderRoute: typeof AuthenticatedAvisosRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/chat': {
+      id: '/_authenticated/chat'
+      path: '/chat'
+      fullPath: '/chat'
+      preLoaderRoute: typeof AuthenticatedChatRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/configuracoes': {
+      id: '/_authenticated/configuracoes'
+      path: '/configuracoes'
+      fullPath: '/configuracoes'
+      preLoaderRoute: typeof AuthenticatedConfiguracoesRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/dashboard': {
       id: '/_authenticated/dashboard'
       path: '/dashboard'
       fullPath: '/dashboard'
       preLoaderRoute: typeof AuthenticatedDashboardRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/documentos': {
+      id: '/_authenticated/documentos'
+      path: '/documentos'
+      fullPath: '/documentos'
+      preLoaderRoute: typeof AuthenticatedDocumentosRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/funcionarios': {
@@ -158,6 +292,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedFuncionariosRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/notificacoes': {
+      id: '/_authenticated/notificacoes'
+      path: '/notificacoes'
+      fullPath: '/notificacoes'
+      preLoaderRoute: typeof AuthenticatedNotificacoesRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/perfil': {
       id: '/_authenticated/perfil'
       path: '/perfil'
@@ -165,19 +306,49 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedPerfilRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/publicacoes': {
+      id: '/_authenticated/publicacoes'
+      path: '/publicacoes'
+      fullPath: '/publicacoes'
+      preLoaderRoute: typeof AuthenticatedPublicacoesRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/reunioes': {
+      id: '/_authenticated/reunioes'
+      path: '/reunioes'
+      fullPath: '/reunioes'
+      preLoaderRoute: typeof AuthenticatedReunioesRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
   }
 }
 
 interface AuthenticatedRouteRouteChildren {
+  AuthenticatedAdminRoute: typeof AuthenticatedAdminRoute
+  AuthenticatedAvisosRoute: typeof AuthenticatedAvisosRoute
+  AuthenticatedChatRoute: typeof AuthenticatedChatRoute
+  AuthenticatedConfiguracoesRoute: typeof AuthenticatedConfiguracoesRoute
   AuthenticatedDashboardRoute: typeof AuthenticatedDashboardRoute
+  AuthenticatedDocumentosRoute: typeof AuthenticatedDocumentosRoute
   AuthenticatedFuncionariosRoute: typeof AuthenticatedFuncionariosRoute
+  AuthenticatedNotificacoesRoute: typeof AuthenticatedNotificacoesRoute
   AuthenticatedPerfilRoute: typeof AuthenticatedPerfilRoute
+  AuthenticatedPublicacoesRoute: typeof AuthenticatedPublicacoesRoute
+  AuthenticatedReunioesRoute: typeof AuthenticatedReunioesRoute
 }
 
 const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
+  AuthenticatedAdminRoute: AuthenticatedAdminRoute,
+  AuthenticatedAvisosRoute: AuthenticatedAvisosRoute,
+  AuthenticatedChatRoute: AuthenticatedChatRoute,
+  AuthenticatedConfiguracoesRoute: AuthenticatedConfiguracoesRoute,
   AuthenticatedDashboardRoute: AuthenticatedDashboardRoute,
+  AuthenticatedDocumentosRoute: AuthenticatedDocumentosRoute,
   AuthenticatedFuncionariosRoute: AuthenticatedFuncionariosRoute,
+  AuthenticatedNotificacoesRoute: AuthenticatedNotificacoesRoute,
   AuthenticatedPerfilRoute: AuthenticatedPerfilRoute,
+  AuthenticatedPublicacoesRoute: AuthenticatedPublicacoesRoute,
+  AuthenticatedReunioesRoute: AuthenticatedReunioesRoute,
 }
 
 const AuthenticatedRouteRouteWithChildren =
