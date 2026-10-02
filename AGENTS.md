@@ -10,3 +10,4 @@
 <!-- LOVABLE:END -->
 - Use Lovable Cloud with row-level policies for persistent corporate data and authorization.
 - Keep authenticated application pages under the shared protected layout.
+- Use the uploaded Shopping Hospitalar logo as the default brand asset while allowing administrators to replace it.
