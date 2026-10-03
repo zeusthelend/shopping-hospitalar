@@ -5,4 +5,5 @@
 - [x] Cadastro e agendamento de reuniões
 - [x] Cadastro, busca e anexos de DAVs
 - [x] Alertas de DAVs vencidos e presença online
+- [x] Chat individual e em grupos com histórico, arquivos e tempo real
 - [ ] Validar fluxos em celular e computador
