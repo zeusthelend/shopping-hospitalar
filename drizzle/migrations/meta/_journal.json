@@ -15,6 +15,13 @@
       "when": 1790913248890,
       "tag": "0001_add_dav_and_notification_features",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1791006670166,
+      "tag": "0002_add_realtime_corporate_chat",
+      "breakpoints": true
     }
   ]
 }
