@@ -12,3 +12,4 @@
 - Keep authenticated application pages under the shared protected layout.
 - Use the uploaded Shopping Hospitalar logo as the default brand asset while allowing administrators to replace it.
 - Persist corporate chat as member-scoped conversations with database-enforced access and dedicated conversation URLs, so history stays synchronized and isolated.
+- Package Android test builds with Capacitor using the stable hosted app URL, preserving the same authenticated cloud data and realtime features.
