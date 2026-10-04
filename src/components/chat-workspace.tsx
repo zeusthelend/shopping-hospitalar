@@ -352,15 +352,13 @@ function Conversation({
             attachment_size: file.size,
           };
         }
-        const { error } = await supabase
-          .from("chat_messages")
-          .insert({
-            conversation_id: id,
-            sender_id: me.id,
-            body: text.trim(),
-            reply_to_id: reply?.id ?? null,
-            ...attachment,
-          });
+        const { error } = await supabase.from("chat_messages").insert({
+          conversation_id: id,
+          sender_id: me.id,
+          body: text.trim(),
+          reply_to_id: reply?.id ?? null,
+          ...attachment,
+        });
         if (error) throw error;
       }
       setText("");
