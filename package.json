@@ -18,6 +18,8 @@
   },
   "dependencies": {
     "@ai-sdk/openai": "^4.0.83",
+    "@capacitor/android": "^8.5.2",
+    "@capacitor/core": "^8.5.2",
     "@hookform/resolvers": "^5.2.2",
     "@lovable.dev/cloud-auth-js": "^1.1.2",
     "@radix-ui/react-accordion": "^1.2.12",
@@ -76,6 +78,8 @@
     "zod": "^3.25.76"
   },
   "devDependencies": {
+    "@capacitor/assets": "^3.0.5",
+    "@capacitor/cli": "^8.5.2",
     "@eslint/js": "^9.32.0",
     "@lovable.dev/vite-tanstack-config": "^2.24.0",
     "@testing-library/jest-dom": "^6.6.0",
