@@ -22,6 +22,13 @@
       "when": 1791006670166,
       "tag": "0002_add_realtime_corporate_chat",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1791245147096,
+      "tag": "0003_add_firebase_push_tokens",
+      "breakpoints": true
     }
   ]
 }

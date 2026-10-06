@@ -3,6 +3,7 @@ apply plugin: 'com.android.application'
 android {
     namespace = "br.com.shoppinghospitalar.portal"
     compileSdk = rootProject.ext.compileSdkVersion
+    buildToolsVersion = rootProject.ext.buildToolsVersion
     defaultConfig {
         applicationId "br.com.shoppinghospitalar.portal"
         minSdkVersion rootProject.ext.minSdkVersion
