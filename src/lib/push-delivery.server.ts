@@ -25,7 +25,10 @@ async function sendFirebaseMessage(target: PushTarget, title: string, body: stri
   });
   if (response.ok) return "sent" as const;
   const errorBody = await response.text();
-  if ((response.status === 404 && errorBody.includes("UNREGISTERED")) || (response.status === 400 && errorBody.includes("INVALID_ARGUMENT"))) {
+  if (
+    (response.status === 404 && errorBody.includes("UNREGISTERED")) ||
+    (response.status === 400 && errorBody.includes("INVALID_ARGUMENT"))
+  ) {
     return "stale" as const;
   }
   console.error(`Firebase Messaging failed [${response.status}]: ${errorBody}`);
@@ -34,10 +37,18 @@ async function sendFirebaseMessage(target: PushTarget, title: string, body: stri
 
 export async function deliverOverdueDavPushes(onlyUserId?: string) {
   const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-  const [{ data: davs, error: davError }, { data: managerRoles, error: roleError }] = await Promise.all([
-    supabaseAdmin.from("davs").select("id,dav_number,client_name,seller_id").lt("due_at", new Date().toISOString()).not("status", "in", "(concluido,cancelado)"),
-    supabaseAdmin.from("user_roles").select("user_id").in("role", ["admin", "diretor", "gerente"]),
-  ]);
+  const [{ data: davs, error: davError }, { data: managerRoles, error: roleError }] =
+    await Promise.all([
+      supabaseAdmin
+        .from("davs")
+        .select("id,dav_number,client_name,seller_id")
+        .lt("due_at", new Date().toISOString())
+        .not("status", "in", "(concluido,cancelado)"),
+      supabaseAdmin
+        .from("user_roles")
+        .select("user_id")
+        .in("role", ["admin", "diretor", "gerente"]),
+    ]);
   if (davError) throw davError;
   if (roleError) throw roleError;
 
@@ -48,20 +59,36 @@ export async function deliverOverdueDavPushes(onlyUserId?: string) {
     for (const userId of recipientIds) {
       if (onlyUserId && userId !== onlyUserId) continue;
       const [{ data: preference }, { data: prior }, { data: targets }] = await Promise.all([
-        supabaseAdmin.from("notification_preferences").select("dav_push_enabled").eq("user_id", userId).maybeSingle(),
-        supabaseAdmin.from("dav_alert_deliveries").select("id").eq("dav_id", dav.id).eq("user_id", userId).maybeSingle(),
+        supabaseAdmin
+          .from("notification_preferences")
+          .select("dav_push_enabled")
+          .eq("user_id", userId)
+          .maybeSingle(),
+        supabaseAdmin
+          .from("dav_alert_deliveries")
+          .select("id")
+          .eq("dav_id", dav.id)
+          .eq("user_id", userId)
+          .maybeSingle(),
         supabaseAdmin.from("firebase_push_tokens").select("id,user_id,token").eq("user_id", userId),
       ]);
       if (preference?.dav_push_enabled === false || prior || !targets?.length) continue;
 
       let sent = false;
       for (const target of targets) {
-        const result = await sendFirebaseMessage(target, `DAV vencido: ${dav.dav_number}`, dav.client_name);
+        const result = await sendFirebaseMessage(
+          target,
+          `DAV vencido: ${dav.dav_number}`,
+          dav.client_name,
+        );
         if (result === "sent") sent = true;
-        if (result === "stale") await supabaseAdmin.from("firebase_push_tokens").delete().eq("id", target.id);
+        if (result === "stale")
+          await supabaseAdmin.from("firebase_push_tokens").delete().eq("id", target.id);
       }
       if (sent) {
-        await supabaseAdmin.from("dav_alert_deliveries").insert({ dav_id: dav.id, user_id: userId });
+        await supabaseAdmin
+          .from("dav_alert_deliveries")
+          .insert({ dav_id: dav.id, user_id: userId });
         delivered += 1;
       }
     }

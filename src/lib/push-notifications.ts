@@ -16,25 +16,34 @@ export type PushRegistrationResult =
   | { status: "not-configured" | "unsupported" | "open-in-new-tab" | "denied" };
 
 export async function registerPushNotifications(userId: string): Promise<PushRegistrationResult> {
-  if (!firebaseConfig.apiKey || !firebaseConfig.projectId || !appId || !vapidKey || !firebaseConfig.messagingSenderId) {
+  if (
+    !firebaseConfig.apiKey ||
+    !firebaseConfig.projectId ||
+    !appId ||
+    !vapidKey ||
+    !firebaseConfig.messagingSenderId
+  ) {
     return { status: "not-configured" };
   }
   if (!("Notification" in window) || !(await isSupported())) return { status: "unsupported" };
   if (window.top !== window.self) return { status: "open-in-new-tab" };
 
-  const permission = Notification.permission === "granted" ? "granted" : await Notification.requestPermission();
+  const permission =
+    Notification.permission === "granted" ? "granted" : await Notification.requestPermission();
   if (permission !== "granted") return { status: "denied" };
 
   const query = new URLSearchParams(firebaseConfig).toString();
   const registration = await navigator.serviceWorker.register(`/firebase-messaging-sw.js?${query}`);
   const app = getApps().length ? getApp() : initializeApp(firebaseConfig);
-  const token = await getToken(getMessaging(app), { vapidKey, serviceWorkerRegistration: registration });
+  const token = await getToken(getMessaging(app), {
+    vapidKey,
+    serviceWorkerRegistration: registration,
+  });
   if (!token) return { status: "denied" };
 
-  const { error } = await supabase.from("firebase_push_tokens").upsert(
-    { user_id: userId, token, platform: "web" },
-    { onConflict: "token" },
-  );
+  const { error } = await supabase
+    .from("firebase_push_tokens")
+    .upsert({ user_id: userId, token, platform: "web" }, { onConflict: "token" });
   if (error) throw error;
   return { status: "registered" };
 }
