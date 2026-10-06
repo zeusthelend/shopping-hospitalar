@@ -13,3 +13,4 @@
 - Use the uploaded Shopping Hospitalar logo as the default brand asset while allowing administrators to replace it.
 - Persist corporate chat as member-scoped conversations with database-enforced access and dedicated conversation URLs, so history stays synchronized and isolated.
 - Package Android test builds with Capacitor using the stable hosted app URL, preserving the same authenticated cloud data and realtime features.
+- Deliver DAV push notifications through Firebase Messaging, storing member-owned device tokens and sending only from authenticated server code or the protected scheduler endpoint.

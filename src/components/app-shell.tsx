@@ -10,6 +10,8 @@ import { Logo, StatusDot, initials, type StatusKey } from "@/components/brand";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Sheet, SheetContent, SheetTrigger, SheetTitle } from "@/components/ui/sheet";
 import { cn } from "@/lib/utils";
+import { useServerFn } from "@tanstack/react-start";
+import { checkOverdueDavPushes } from "@/lib/push-notifications.functions";
 
 const NAV = [
   { to: "/dashboard", label: "Início", icon: Home },
@@ -52,6 +54,7 @@ export function AppShell({ children }: { children: ReactNode }) {
   const [open, setOpen] = useState(false);
   const [dark, setDark] = useState(false);
   const presenceSoundEnabled = useRef(true);
+  const checkOverduePushes = useServerFn(checkOverdueDavPushes);
 
   useEffect(() => setDark(document.documentElement.classList.contains("dark")), []);
   useEffect(() => {
@@ -72,9 +75,10 @@ export function AppShell({ children }: { children: ReactNode }) {
     return()=>{void supabase.removeChannel(channel)};
   },[me?.profile?.id]);
   useEffect(()=>{
-    if(!me?.profile)return;
-    const check=async()=>{const{data:preference}=await supabase.from("notification_preferences").select("dav_push_enabled").eq("user_id",me.profile?.id??"").maybeSingle();if(preference?.dav_push_enabled===false||!("Notification" in window)||Notification.permission!=="granted")return;const{data}=await supabase.from("davs").select("id,dav_number,client_name").lt("due_at",new Date().toISOString()).not("status","in",'(concluido,cancelado)');for(const dav of data??[]){const key=`dav-notified:${me.profile?.id}:${dav.id}`;if(localStorage.getItem(key))continue;new Notification(`DAV vencido: ${dav.dav_number}`,{body:dav.client_name,icon:"/icon-192.png",tag:`dav-${dav.id}`});localStorage.setItem(key,"1");}};void check();const timer=window.setInterval(()=>void check(),60_000);return()=>window.clearInterval(timer);
-  },[me?.profile?.id]);
+    if(!me?.profile||!("Notification" in window)||Notification.permission!=="granted")return;
+    const check=()=>checkOverduePushes().catch(()=>undefined);
+    void check();const timer=window.setInterval(()=>void check(),60_000);return()=>window.clearInterval(timer);
+  },[me?.profile?.id,checkOverduePushes]);
 
   function toggleTheme() {
     const d = !dark;
