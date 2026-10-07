@@ -753,6 +753,7 @@ export type Database = {
         Args: { _conversation_id: string; _user_id: string }
         Returns: boolean
       }
+      is_approved_user: { Args: Record<PropertyKey, never>; Returns: boolean }
       is_manager: { Args: { _user_id: string }; Returns: boolean }
       redeem_access_pin: { Args: { _pin: string }; Returns: boolean }
     }

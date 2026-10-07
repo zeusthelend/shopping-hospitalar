@@ -20,11 +20,29 @@ async function sendFirebaseMessage(target: PushTarget, title: string, body: stri
         token: target.token,
         notification: { title, body },
         data: { path: "/davs" },
-        android: { priority: "HIGH", ttl: "86400s", notification: { channel_id: "dav_alerts", default_sound: true, visibility: "PUBLIC", notification_priority: "PRIORITY_MAX" } },
+        android: {
+          priority: "HIGH",
+          ttl: "86400s",
+          notification: {
+            channel_id: "dav_alerts",
+            default_sound: true,
+            visibility: "PUBLIC",
+            notification_priority: "PRIORITY_MAX",
+          },
+        },
         apns: { headers: { "apns-priority": "10" }, payload: { aps: { sound: "default" } } },
         webpush: {
           headers: { Urgency: "high", TTL: "86400" },
-          notification: { title, body, icon: "/icon-192.png", badge: "/favicon.png", requireInteraction: true, tag: `dav-${target.id}`, renotify: true, vibrate: [300, 100, 300] },
+          notification: {
+            title,
+            body,
+            icon: "/icon-192.png",
+            badge: "/favicon.png",
+            requireInteraction: true,
+            tag: `dav-${target.id}`,
+            renotify: true,
+            vibrate: [300, 100, 300],
+          },
           fcm_options: { link: DAV_ALERT_URL },
         },
       },
@@ -44,25 +62,30 @@ async function sendFirebaseMessage(target: PushTarget, title: string, body: stri
 
 export async function deliverOverdueDavPushes(onlyUserId?: string) {
   const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-  const [{ data: davs, error: davError }, { data: managerRoles, error: roleError }] =
-    await Promise.all([
-      supabaseAdmin
-        .from("davs")
-        .select("id,dav_number,client_name,seller_id")
-        .lt("due_at", new Date().toISOString())
-        .not("status", "in", "(concluido,cancelado)"),
-      supabaseAdmin
-        .from("user_roles")
-        .select("user_id")
-        .in("role", ["admin", "diretor", "gerente"]),
-    ]);
+  const [
+    { data: davs, error: davError },
+    { data: managerRoles, error: roleError },
+    { data: approvedProfiles, error: profileError },
+  ] = await Promise.all([
+    supabaseAdmin
+      .from("davs")
+      .select("id,dav_number,client_name,seller_id")
+      .lt("due_at", new Date().toISOString())
+      .not("status", "in", "(concluido,cancelado)"),
+    supabaseAdmin.from("user_roles").select("user_id").in("role", ["admin", "diretor", "gerente"]),
+    supabaseAdmin.from("profiles").select("id").eq("approved", true).eq("active", true),
+  ]);
   if (davError) throw davError;
   if (roleError) throw roleError;
+  if (profileError) throw profileError;
 
   const managers = new Set((managerRoles ?? []).map((role) => role.user_id));
+  const approvedUserIds = new Set((approvedProfiles ?? []).map((profile) => profile.id));
   let delivered = 0;
   for (const dav of davs ?? []) {
-    const recipientIds = new Set([dav.seller_id, ...managers]);
+    const recipientIds = new Set(
+      [dav.seller_id, ...managers].filter((id) => approvedUserIds.has(id)),
+    );
     for (const userId of recipientIds) {
       if (onlyUserId && userId !== onlyUserId) continue;
       const [{ data: preference }, { data: prior }, { data: targets }] = await Promise.all([
