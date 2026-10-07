@@ -46,7 +46,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
-import { initials } from "@/components/brand";
+import { initials, livePresence } from "@/components/brand";
 
 type ProfileLite = { id: string; full_name: string; avatar_url: string | null; status: string };
 type ConversationRow = {
@@ -718,6 +718,7 @@ function NewConversationDialog({
   const [search, setSearch] = useState("");
   const [busy, setBusy] = useState(false);
   const nav = useNavigate();
+  const qc = useQueryClient();
   const visible = profiles.filter((p) => p.full_name.toLowerCase().includes(search.toLowerCase()));
   function toggle(id: string) {
     setSelected((current) =>
