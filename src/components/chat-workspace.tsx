@@ -94,10 +94,12 @@ export function ChatWorkspace({ conversationId }: { conversationId?: string | un
         .from("profiles")
         .select("id,full_name,avatar_url,status,last_seen_at")
         .eq("active", true)
+        .eq("approved", true)
         .order("full_name");
       if (error) throw error;
       return data as ProfileLite[];
     },
+    refetchInterval: 30_000,
   });
   const { data: memberships = [] } = useQuery({
     queryKey: ["chat-conversations", me?.profile?.id],
@@ -113,6 +115,7 @@ export function ChatWorkspace({ conversationId }: { conversationId?: string | un
       if (error) throw error;
       return data as ConversationRow[];
     },
+    refetchInterval: 15_000,
   });
   const conversationIds = memberships.map((x) => x.conversation_id);
   const { data: allParticipants = [] } = useQuery({
@@ -126,6 +129,7 @@ export function ChatWorkspace({ conversationId }: { conversationId?: string | un
       if (error) throw error;
       return data ?? [];
     },
+    refetchInterval: 15_000,
   });
   const profileMap = useMemo(() => new Map(profiles.map((p) => [p.id, p])), [profiles]);
   const filtered = memberships.filter((m) =>
@@ -289,6 +293,7 @@ function Conversation({
       if (error) throw error;
       return data as MessageRow[];
     },
+    refetchInterval: 10_000,
   });
   useEffect(() => {
     const channel = supabase

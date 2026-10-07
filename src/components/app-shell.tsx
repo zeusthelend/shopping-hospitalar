@@ -21,12 +21,16 @@ import {
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useMe, ROLE_LABEL } from "@/lib/auth";
-import { Logo, StatusDot, initials, type StatusKey } from "@/components/brand";
+import { Logo, StatusDot, initials, livePresence } from "@/components/brand";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Sheet, SheetContent, SheetTrigger, SheetTitle } from "@/components/ui/sheet";
 import { cn } from "@/lib/utils";
 import { useServerFn } from "@tanstack/react-start";
 import { checkOverdueDavPushes } from "@/lib/push-notifications.functions";
+import {
+  listenForNativePushNavigation,
+  refreshNativePushToken,
+} from "@/lib/push-notifications";
 
 const NAV = [
   { to: "/dashboard", label: "Início", icon: Home },
@@ -83,25 +87,39 @@ export function AppShell({ children }: { children: ReactNode }) {
   const checkOverduePushes = useServerFn(checkOverdueDavPushes);
 
   useEffect(() => setDark(document.documentElement.classList.contains("dark")), []);
+  useEffect(() => listenForNativePushNavigation(), []);
+  useEffect(() => {
+    if (!me?.profile?.id || !me.profile.approved) return;
+    void refreshNativePushToken(me.profile.id).catch((error: unknown) =>
+      console.error("Native push token refresh failed", error),
+    );
+  }, [me?.profile?.approved, me?.profile?.id]);
   useEffect(() => {
     if (!me?.profile) return;
     const id = me.profile.id;
     const beat = () => {
       if (document.visibilityState !== "visible") return;
-      void supabase
-        .from("profiles")
-        .select("status")
-        .eq("id", id)
-        .maybeSingle()
-        .then(({ data }) =>
-          supabase
-            .from("profiles")
-            .update({
-              last_seen_at: new Date().toISOString(),
-              ...(!data || data.status === "offline" ? { status: "online" as const } : {}),
-            })
-            .eq("id", id),
-        );
+      void (async () => {
+        const { data, error } = await supabase
+          .from("profiles")
+          .select("status")
+          .eq("id", id)
+          .eq("approved", true)
+          .eq("active", true)
+          .maybeSingle();
+        if (error) throw error;
+        const { error: updateError } = await supabase
+          .from("profiles")
+          .update({
+            last_seen_at: new Date().toISOString(),
+            ...(data?.status === "offline" ? { status: "online" as const } : {}),
+          })
+          .eq("id", id)
+          .eq("approved", true)
+          .eq("active", true);
+        if (updateError) throw updateError;
+        await qc.invalidateQueries({ queryKey: ["me", id] });
+      })().catch((error: unknown) => console.error("Presence heartbeat failed", error));
     };
     const goOffline = async () => {
       const { data } = await supabase.auth.getSession();
@@ -119,7 +137,9 @@ export function AppShell({ children }: { children: ReactNode }) {
         body: JSON.stringify({ status: "offline" }),
       });
     };
-    const onVisibility = () => (document.visibilityState === "visible" ? beat() : void goOffline());
+    const onVisibility = () => {
+      if (document.visibilityState === "visible") beat();
+    };
     beat();
     const timer = window.setInterval(beat, 60_000);
     document.addEventListener("visibilitychange", onVisibility);
@@ -129,7 +149,7 @@ export function AppShell({ children }: { children: ReactNode }) {
       document.removeEventListener("visibilitychange", onVisibility);
       window.removeEventListener("pagehide", goOffline);
     };
-  }, [me?.profile?.id]);
+  }, [me?.profile?.id, qc]);
   useEffect(() => {
     if (!me?.profile) return;
     supabase
@@ -210,7 +230,7 @@ export function AppShell({ children }: { children: ReactNode }) {
         </Avatar>
         {p && (
           <StatusDot
-            status={p.status as StatusKey}
+            status={livePresence(p)}
             className="absolute -bottom-0.5 -right-0.5 ring-sidebar"
           />
         )}

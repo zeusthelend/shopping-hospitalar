@@ -3,7 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { AlertTriangle, CalendarDays, FileText, Megaphone, MessageSquare, Users } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useMe } from "@/lib/auth";
-import { Empty, PageHeader } from "@/components/brand";
+import { Empty, livePresence, PageHeader } from "@/components/brand";
 
 export const Route = createFileRoute("/_authenticated/dashboard")({
   head: () => ({ meta: [
@@ -19,15 +19,20 @@ function Dashboard() {
   const { data: me } = useMe();
   const { data } = useQuery({ queryKey: ["dashboard"], queryFn: async () => {
     const [p, a, m, d, posts, davs] = await Promise.all([
-      supabase.from("profiles").select("id,status").eq("status", "online"),
+      supabase
+        .from("profiles")
+        .select("id,status,last_seen_at")
+        .eq("active", true)
+        .eq("approved", true),
       supabase.from("announcements").select("*").order("created_at", { ascending: false }).limit(3),
       supabase.from("meetings").select("*").gte("starts_at", new Date().toISOString()).order("starts_at").limit(3),
       supabase.from("documents").select("*").order("created_at", { ascending: false }).limit(3),
       supabase.from("posts").select("*").order("created_at", { ascending: false }).limit(3),
       supabase.from("davs").select("id,dav_number,client_name,due_at,status").lt("due_at",new Date().toISOString()).not("status","in",'(concluido,cancelado)').order("due_at"),
     ]);
-    return { online: p.data?.length ?? 0, announcements: a.data ?? [], meetings: m.data ?? [], documents: d.data ?? [], posts: posts.data ?? [], overdueDavs:davs.data??[] };
-  }});
+    const online = p.data?.filter((profile) => livePresence(profile) === "online").length ?? 0;
+    return { online, announcements: a.data ?? [], meetings: m.data ?? [], documents: d.data ?? [], posts: posts.data ?? [], overdueDavs:davs.data??[] };
+  }, refetchInterval:30_000});
   const first = me?.profile?.full_name?.split(" ")[0] || "colaborador";
   const cards = [
     ["Funcionários online", data?.online ?? 0, Users, "text-success bg-success/10"],

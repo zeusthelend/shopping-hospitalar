@@ -36,6 +36,13 @@
       "when": 1791332243837,
       "tag": "0004_chat_rpc_presence_pins_dav_delete",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1791339000000,
+      "tag": "0005_chat_presence_policy",
+      "breakpoints": true
     }
   ]
 }

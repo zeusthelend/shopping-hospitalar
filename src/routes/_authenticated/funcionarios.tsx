@@ -25,7 +25,7 @@ function csvCell(value: unknown) { return `"${String(value ?? "").replaceAll('"'
 function Employees(){
  const [q,setQ]=useState("");
  const {data:me}=useMe();
- const {data=[]}=useQuery({queryKey:["employees"],queryFn:async()=>{const {data,error}=await supabase.from("profiles").select("*, positions(name), departments(name)").order("full_name");if(error)throw error;return data;}});
+ const {data=[]}=useQuery({queryKey:["employees"],queryFn:async()=>{const {data,error}=await supabase.from("profiles").select("*, positions(name), departments(name)").eq("approved",true).eq("active",true).order("full_name");if(error)throw error;return data;},refetchInterval:30_000});
  const shown=data.filter(x=>`${x.full_name} ${x.email} ${x.unit} ${x.positions?.name} ${x.departments?.name}`.toLowerCase().includes(q.toLowerCase()));
  function exportCsv(){
    const headers=["Nome","E-mail","Telefone","Unidade","Ramal","Status","Cargo","Departamento"];
