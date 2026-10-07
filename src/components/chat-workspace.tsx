@@ -48,7 +48,13 @@ import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
 import { initials, livePresence } from "@/components/brand";
 
-type ProfileLite = { id: string; full_name: string; avatar_url: string | null; status: string; last_seen_at?: string | null };
+type ProfileLite = {
+  id: string;
+  full_name: string;
+  avatar_url: string | null;
+  status: string;
+  last_seen_at?: string | null;
+};
 type ConversationRow = {
   conversation_id: string;
   is_admin: boolean;
@@ -87,7 +93,11 @@ export function ChatWorkspace({ conversationId }: { conversationId?: string | un
   const qc = useQueryClient();
   const navigate = useNavigate();
   const [search, setSearch] = useState("");
-  const { data: profiles = [], isError: profilesError, refetch: refetchProfiles } = useQuery({
+  const {
+    data: profiles = [],
+    isError: profilesError,
+    refetch: refetchProfiles,
+  } = useQuery({
     queryKey: ["chat-profiles"],
     queryFn: async () => {
       const { data, error } = await supabase
@@ -129,7 +139,9 @@ export function ChatWorkspace({ conversationId }: { conversationId?: string | un
     queryFn: async () => {
       const { data, error } = await supabase
         .from("chat_participants")
-        .select("conversation_id,user_id,is_admin,profiles(id,full_name,avatar_url,status,last_seen_at)")
+        .select(
+          "conversation_id,user_id,is_admin,profiles(id,full_name,avatar_url,status,last_seen_at)",
+        )
         .in("conversation_id", conversationIds);
       if (error) throw error;
       return data ?? [];
@@ -253,11 +265,7 @@ export function ChatWorkspace({ conversationId }: { conversationId?: string | un
             <div>
               <MessageCircle className="mx-auto h-10 w-10 text-destructive" />
               <p className="mt-3 text-sm text-destructive">Não foi possível verificar o acesso.</p>
-              <Button
-                className="mt-4"
-                variant="outline"
-                onClick={() => void refetchMemberships()}
-              >
+              <Button className="mt-4" variant="outline" onClick={() => void refetchMemberships()}>
                 Tentar novamente
               </Button>
             </div>
@@ -793,23 +801,19 @@ function NewConversationDialog({
   const nav = useNavigate();
   const qc = useQueryClient();
   const visible = profiles.filter((p) => p.full_name.toLowerCase().includes(search.toLowerCase()));
-  function toggle(id: string) {
+  function toggleGroupMember(id: string) {
     setSelected((current) =>
-      current.includes(id)
-        ? current.filter((x) => x !== id)
-        : type === "direct"
-          ? [id]
-          : [...current, id],
+      current.includes(id) ? current.filter((x) => x !== id) : [...current, id],
     );
   }
-  async function create() {
-    if (!userId || !selected.length || (type === "group" && !name.trim())) return;
+  async function createConversation(kind: "direct" | "group", members: string[]) {
+    if (!userId || !members.length || (kind === "group" && !name.trim())) return;
     setBusy(true);
     try {
       const { data: conversationId, error } = await supabase.rpc("create_chat_conversation", {
-        _kind: type,
-        _name: type === "group" ? name.trim() : "",
-        _members: selected,
+        _kind: kind,
+        _name: kind === "group" ? name.trim() : "",
+        _members: members,
       });
       if (error) throw error;
       if (typeof conversationId !== "string" || !conversationId)
@@ -837,7 +841,9 @@ function NewConversationDialog({
         <DialogHeader>
           <DialogTitle>Nova conversa</DialogTitle>
           <DialogDescription>
-            Converse com um colaborador ou crie um grupo corporativo.
+            {type === "direct"
+              ? "Selecione um colaborador para abrir a conversa e enviar uma mensagem."
+              : "Selecione as pessoas e defina o nome do grupo corporativo."}
           </DialogDescription>
         </DialogHeader>
         <div className="grid grid-cols-2 gap-2">
@@ -887,10 +893,22 @@ function NewConversationDialog({
             {visible.map((p) => (
               <button
                 key={p.id}
-                onClick={() => toggle(p.id)}
+                onClick={() =>
+                  type === "direct"
+                    ? void createConversation("direct", [p.id])
+                    : toggleGroupMember(p.id)
+                }
+                disabled={busy}
+                aria-label={
+                  type === "direct" ? `Conversar com ${p.full_name}` : `Selecionar ${p.full_name}`
+                }
                 className="flex w-full items-center gap-3 rounded-md p-2 text-left hover:bg-muted"
               >
-                <Checkbox checked={selected.includes(p.id)} />
+                {type === "group" ? (
+                  <Checkbox checked={selected.includes(p.id)} />
+                ) : (
+                  <MessageCircle className="h-4 w-4 shrink-0 text-highlight" />
+                )}
                 <Avatar className="h-8 w-8">
                   <AvatarImage src={p.avatar_url ?? undefined} />
                   <AvatarFallback>{initials(p.full_name)}</AvatarFallback>
@@ -906,12 +924,18 @@ function NewConversationDialog({
             ))}
           </div>
         </ScrollArea>
-        <Button
-          onClick={() => void create()}
-          disabled={busy || !selected.length || (type === "group" && !name.trim())}
-        >
-          {busy ? "Criando..." : type === "group" ? "Criar grupo" : "Iniciar conversa"}
-        </Button>
+        {type === "direct" && busy ? (
+          <p role="status" className="text-center text-sm text-muted-foreground">
+            Abrindo conversa...
+          </p>
+        ) : type === "group" ? (
+          <Button
+            onClick={() => void createConversation("group", selected)}
+            disabled={busy || !selected.length || !name.trim()}
+          >
+            {busy ? "Criando..." : "Criar grupo"}
+          </Button>
+        ) : null}
       </DialogContent>
     </Dialog>
   );

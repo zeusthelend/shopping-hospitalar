@@ -1,16 +1,19 @@
-import { defineConfig } from "vitest/config";
-import react from "@vitejs/plugin-react";
-import path from "node:path";
+import { loadConfigFromFile } from "vite";
+import { defineConfig, mergeConfig } from "vitest/config";
 
-export default defineConfig({
-  plugins: [react()],
-  test: {
-    environment: "jsdom",
-    globals: true,
-    setupFiles: ["./src/test/setup.ts"],
-    include: ["src/**/*.{test,spec}.{ts,tsx}"],
-  },
-  resolve: {
-    alias: { "@": path.resolve(__dirname, "./src") },
-  },
+export default defineConfig(async (configEnv) => {
+  const loadedConfig = await loadConfigFromFile(configEnv, "vite.config.ts");
+  if (!loadedConfig) throw new Error("Unable to load the application Vite config.");
+
+  return mergeConfig(
+    loadedConfig.config,
+    defineConfig({
+      test: {
+        environment: "jsdom",
+        globals: true,
+        setupFiles: ["./src/test/setup.ts"],
+        include: ["src/**/*.{test,spec}.{ts,tsx}"],
+      },
+    }),
+  );
 });
