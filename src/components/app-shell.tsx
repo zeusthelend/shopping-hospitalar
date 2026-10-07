@@ -85,14 +85,50 @@ export function AppShell({ children }: { children: ReactNode }) {
   useEffect(() => setDark(document.documentElement.classList.contains("dark")), []);
   useEffect(() => {
     if (!me?.profile) return;
-    supabase
-      .from("profiles")
-      .update({
-        last_seen_at: new Date().toISOString(),
-        ...(me.profile.status === "offline" ? { status: "online" as const } : {}),
-      })
-      .eq("id", me.profile.id)
-      .then(() => {});
+    const id = me.profile.id;
+    const beat = () => {
+      if (document.visibilityState !== "visible") return;
+      void supabase
+        .from("profiles")
+        .select("status")
+        .eq("id", id)
+        .maybeSingle()
+        .then(({ data }) =>
+          supabase
+            .from("profiles")
+            .update({
+              last_seen_at: new Date().toISOString(),
+              ...(!data || data.status === "offline" ? { status: "online" as const } : {}),
+            })
+            .eq("id", id),
+        );
+    };
+    const goOffline = async () => {
+      const { data } = await supabase.auth.getSession();
+      const token = data.session?.access_token;
+      if (!token) return;
+      const url = `${import.meta.env["VITE_SUPABASE_URL"]}/rest/v1/profiles?id=eq.${id}`;
+      void fetch(url, {
+        method: "PATCH",
+        keepalive: true,
+        headers: {
+          apikey: import.meta.env["VITE_SUPABASE_PUBLISHABLE_KEY"],
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ status: "offline" }),
+      });
+    };
+    const onVisibility = () => (document.visibilityState === "visible" ? beat() : void goOffline());
+    beat();
+    const timer = window.setInterval(beat, 60_000);
+    document.addEventListener("visibilitychange", onVisibility);
+    window.addEventListener("pagehide", goOffline);
+    return () => {
+      window.clearInterval(timer);
+      document.removeEventListener("visibilitychange", onVisibility);
+      window.removeEventListener("pagehide", goOffline);
+    };
   }, [me?.profile?.id]);
   useEffect(() => {
     if (!me?.profile) return;
@@ -241,7 +277,13 @@ export function AppShell({ children }: { children: ReactNode }) {
             </Link>
           </div>
         </header>
-        <main className="flex-1 px-4 pb-24 pt-6 md:px-8 lg:pb-10">{children}</main>
+        <main className="flex-1 px-4 pb-24 pt-6 md:px-8 lg:pb-10">
+          {p && !p.approved && !me?.isAdmin ? (
+            <PinGate onDone={() => void qc.invalidateQueries({ queryKey: ["me"] })} />
+          ) : (
+            children
+          )}
+        </main>
         <nav className="fixed inset-x-0 bottom-0 z-30 grid grid-cols-5 border-t bg-card lg:hidden">
           {NAV.slice(0, 5).map((i) => (
             <Link
