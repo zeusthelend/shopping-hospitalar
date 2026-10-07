@@ -92,7 +92,7 @@ export function ChatWorkspace({ conversationId }: { conversationId?: string | un
     queryFn: async () => {
       const { data, error } = await supabase
         .from("profiles")
-        .select("id,full_name,avatar_url,status")
+        .select("id,full_name,avatar_url,status,last_seen_at")
         .eq("active", true)
         .order("full_name");
       if (error) throw error;
@@ -121,7 +121,7 @@ export function ChatWorkspace({ conversationId }: { conversationId?: string | un
     queryFn: async () => {
       const { data, error } = await supabase
         .from("chat_participants")
-        .select("conversation_id,user_id,is_admin,profiles(id,full_name,avatar_url,status)")
+        .select("conversation_id,user_id,is_admin,profiles(id,full_name,avatar_url,status,last_seen_at)")
         .in("conversation_id", conversationIds);
       if (error) throw error;
       return data ?? [];
@@ -201,7 +201,7 @@ export function ChatWorkspace({ conversationId }: { conversationId?: string | un
                     <p className="truncate text-xs text-muted-foreground">
                       {m.chat_conversations?.kind === "group"
                         ? "Grupo corporativo"
-                        : peer?.status === "online"
+                        : livePresence(peer) === "online"
                           ? "Online"
                           : "Offline"}
                     </p>
@@ -282,7 +282,7 @@ function Conversation({
       const { data, error } = await supabase
         .from("chat_messages")
         .select(
-          "*, profiles!chat_messages_sender_id_fkey(id,full_name,avatar_url,status), chat_reactions(emoji,user_id)",
+          "*, profiles!chat_messages_sender_id_fkey(id,full_name,avatar_url,status,last_seen_at), chat_reactions(emoji,user_id)",
         )
         .eq("conversation_id", id)
         .order("created_at");
@@ -394,7 +394,7 @@ function Conversation({
           <p className="text-xs text-muted-foreground">
             {conversation.chat_conversations?.kind === "group"
               ? `${participants.length} participantes`
-              : participants.find((p) => p.user_id !== me.id)?.profiles?.status === "online"
+              : livePresence(participants.find((p) => p.user_id !== me.id)?.profiles) === "online"
                 ? "Online"
                 : "Offline"}
           </p>
@@ -732,16 +732,15 @@ function NewConversationDialog({
     if (!userId || !selected.length || (type === "group" && !name.trim())) return;
     setBusy(true);
     try {
-      const { data, error } = await supabase
-        .from("chat_conversations")
-        .insert({ kind: type, name: type === "group" ? name.trim() : null, created_by: userId })
-        .select("id")
-        .single();
+      const { data: conversationId, error } = await supabase.rpc("create_chat_conversation", {
+        _kind: type,
+        _name: type === "group" ? name.trim() : "",
+        _members: selected,
+      });
       if (error) throw error;
-      const { error: participantsError } = await supabase
-        .from("chat_participants")
-        .insert(selected.map((member) => ({ conversation_id: data.id, user_id: member })));
-      if (participantsError) throw participantsError;
+      const data = { id: conversationId as string };
+      await qc.invalidateQueries({ queryKey: ["chat-conversations"] });
+      await qc.invalidateQueries({ queryKey: ["chat-participants"] });
       setOpen(false);
       setSelected([]);
       setName("");
@@ -825,7 +824,7 @@ function NewConversationDialog({
                 <span
                   className={cn(
                     "h-2 w-2 rounded-full",
-                    p.status === "online" ? "bg-success" : "bg-muted-foreground/30",
+                    livePresence(p) === "online" ? "bg-success" : "bg-muted-foreground/30",
                   )}
                 />
               </button>
@@ -891,7 +890,7 @@ function ConversationAvatar({
         <span
           className={cn(
             "absolute bottom-0 right-0 h-2.5 w-2.5 rounded-full border-2 border-card",
-            peer?.status === "online" ? "bg-success" : "bg-muted-foreground/40",
+            livePresence(peer) === "online" ? "bg-success" : "bg-muted-foreground/40",
           )}
         />
       )}
