@@ -19,7 +19,13 @@ async function sendFirebaseMessage(target: PushTarget, title: string, body: stri
         token: target.token,
         notification: { title, body },
         data: { path: "/davs" },
-        webpush: { fcm_options: { link: "/davs" } },
+        android: { priority: "HIGH", ttl: "86400s", notification: { channel_id: "dav_alerts", default_sound: true, visibility: "PUBLIC", notification_priority: "PRIORITY_MAX" } },
+        apns: { headers: { "apns-priority": "10" }, payload: { aps: { sound: "default" } } },
+        webpush: {
+          headers: { Urgency: "high", TTL: "86400" },
+          notification: { title, body, icon: "/icon-192.png", badge: "/favicon.png", requireInteraction: true, tag: `dav-${target.id}`, renotify: true, vibrate: [300, 100, 300] },
+          fcm_options: { link: "/davs" },
+        },
       },
     }),
   });

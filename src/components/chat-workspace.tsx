@@ -48,7 +48,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
 import { initials, livePresence } from "@/components/brand";
 
-type ProfileLite = { id: string; full_name: string; avatar_url: string | null; status: string };
+type ProfileLite = { id: string; full_name: string; avatar_url: string | null; status: string; last_seen_at?: string | null };
 type ConversationRow = {
   conversation_id: string;
   is_admin: boolean;
