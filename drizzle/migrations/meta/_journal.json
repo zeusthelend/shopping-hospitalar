@@ -29,6 +29,13 @@
       "when": 1791245147096,
       "tag": "0003_add_firebase_push_tokens",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1791332243837,
+      "tag": "0004_chat_rpc_presence_pins_dav_delete",
+      "breakpoints": true
     }
   ]
 }
