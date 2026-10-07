@@ -38,6 +38,12 @@ export const STATUS_OPTIONS = Object.entries(STATUS).map(([k, v]) => ({ value: k
 export function StatusDot({ status, className }: { status: StatusKey; className?: string }) {
   return <span className={cn("inline-block h-2.5 w-2.5 rounded-full ring-2 ring-card", STATUS[status].cls, className)} title={STATUS[status].label} />;
 }
+/** Online statuses only count while the person keeps the app open (heartbeat every minute). */
+export function livePresence(p?: { status?: string | null; last_seen_at?: string | null } | null): StatusKey {
+  if (!p?.status || p.status === "offline") return "offline";
+  if (!p.last_seen_at || Date.now() - new Date(p.last_seen_at).getTime() > 150_000) return "offline";
+  return p.status as StatusKey;
+}
 export const statusLabel = (s: StatusKey) => STATUS[s].label;
 
 export function PageHeader({ title, subtitle, action }: { title: string; subtitle?: string; action?: React.ReactNode }) {

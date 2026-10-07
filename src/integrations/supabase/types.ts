@@ -14,6 +14,39 @@ export type Database = {
   }
   public: {
     Tables: {
+      access_pins: {
+        Row: {
+          created_at: string
+          created_by: string
+          expires_at: string
+          id: string
+          label: string | null
+          pin_hash: string
+          used_at: string | null
+          used_by: string | null
+        }
+        Insert: {
+          created_at?: string
+          created_by: string
+          expires_at?: string
+          id?: string
+          label?: string | null
+          pin_hash: string
+          used_at?: string | null
+          used_by?: string | null
+        }
+        Update: {
+          created_at?: string
+          created_by?: string
+          expires_at?: string
+          id?: string
+          label?: string | null
+          pin_hash?: string
+          used_at?: string | null
+          used_by?: string | null
+        }
+        Relationships: []
+      }
       announcements: {
         Row: {
           author_id: string | null
@@ -559,6 +592,7 @@ export type Database = {
       profiles: {
         Row: {
           active: boolean
+          approved: boolean
           avatar_url: string | null
           created_at: string
           department_id: string | null
@@ -577,6 +611,7 @@ export type Database = {
         }
         Insert: {
           active?: boolean
+          approved?: boolean
           avatar_url?: string | null
           created_at?: string
           department_id?: string | null
@@ -595,6 +630,7 @@ export type Database = {
         }
         Update: {
           active?: boolean
+          approved?: boolean
           avatar_url?: string | null
           created_at?: string
           department_id?: string | null
@@ -658,6 +694,21 @@ export type Database = {
         }
         Relationships: []
       }
+      scheduler_tokens: {
+        Row: {
+          name: string
+          token: string
+        }
+        Insert: {
+          name: string
+          token?: string
+        }
+        Update: {
+          name?: string
+          token?: string
+        }
+        Relationships: []
+      }
       user_roles: {
         Row: {
           id: string
@@ -681,6 +732,12 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      can_delete_davs: { Args: { _user_id: string }; Returns: boolean }
+      create_access_pin: { Args: { _label: string }; Returns: string }
+      create_chat_conversation: {
+        Args: { _kind: string; _members: string[]; _name: string }
+        Returns: string
+      }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
@@ -697,6 +754,7 @@ export type Database = {
         Returns: boolean
       }
       is_manager: { Args: { _user_id: string }; Returns: boolean }
+      redeem_access_pin: { Args: { _pin: string }; Returns: boolean }
     }
     Enums: {
       app_role: "admin" | "diretor" | "gerente" | "funcionario"

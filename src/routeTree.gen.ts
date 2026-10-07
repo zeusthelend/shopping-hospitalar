@@ -27,6 +27,7 @@ import { Route as AuthenticatedPublicacoesRouteImport } from './routes/_authenti
 import { Route as AuthenticatedReunioesRouteImport } from './routes/_authenticated/reunioes'
 import { Route as AuthenticatedChatConversationIdRouteImport } from './routes/_authenticated/chat.$conversationId'
 import { Route as ApiPublicDavPushRouteImport } from './routes/api/public/dav-push'
+import { Route as ApiPublicDavPushTickRouteImport } from './routes/api/public/dav-push-tick'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -122,6 +123,11 @@ const ApiPublicDavPushRoute = ApiPublicDavPushRouteImport.update({
   path: '/api/public/dav-push',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiPublicDavPushTickRoute = ApiPublicDavPushTickRouteImport.update({
+  id: '/api/public/dav-push-tick',
+  path: '/api/public/dav-push-tick',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -141,6 +147,7 @@ export interface FileRoutesByFullPath {
   '/reunioes': typeof AuthenticatedReunioesRoute
   '/chat/$conversationId': typeof AuthenticatedChatConversationIdRoute
   '/api/public/dav-push': typeof ApiPublicDavPushRoute
+  '/api/public/dav-push-tick': typeof ApiPublicDavPushTickRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -160,6 +167,7 @@ export interface FileRoutesByTo {
   '/reunioes': typeof AuthenticatedReunioesRoute
   '/chat/$conversationId': typeof AuthenticatedChatConversationIdRoute
   '/api/public/dav-push': typeof ApiPublicDavPushRoute
+  '/api/public/dav-push-tick': typeof ApiPublicDavPushTickRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -181,6 +189,7 @@ export interface FileRoutesById {
   '/_authenticated/reunioes': typeof AuthenticatedReunioesRoute
   '/_authenticated/chat/$conversationId': typeof AuthenticatedChatConversationIdRoute
   '/api/public/dav-push': typeof ApiPublicDavPushRoute
+  '/api/public/dav-push-tick': typeof ApiPublicDavPushTickRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -202,6 +211,7 @@ export interface FileRouteTypes {
     | '/reunioes'
     | '/chat/$conversationId'
     | '/api/public/dav-push'
+    | '/api/public/dav-push-tick'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -221,6 +231,7 @@ export interface FileRouteTypes {
     | '/reunioes'
     | '/chat/$conversationId'
     | '/api/public/dav-push'
+    | '/api/public/dav-push-tick'
   id:
     | '__root__'
     | '/'
@@ -241,6 +252,7 @@ export interface FileRouteTypes {
     | '/_authenticated/reunioes'
     | '/_authenticated/chat/$conversationId'
     | '/api/public/dav-push'
+    | '/api/public/dav-push-tick'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -249,6 +261,7 @@ export interface RootRouteChildren {
   AuthRoute: typeof AuthRoute
   ResetPasswordRoute: typeof ResetPasswordRoute
   ApiPublicDavPushRoute: typeof ApiPublicDavPushRoute
+  ApiPublicDavPushTickRoute: typeof ApiPublicDavPushTickRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -379,6 +392,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicDavPushRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/dav-push-tick': {
+      id: '/api/public/dav-push-tick'
+      path: '/api/public/dav-push-tick'
+      fullPath: '/api/public/dav-push-tick'
+      preLoaderRoute: typeof ApiPublicDavPushTickRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -432,6 +452,7 @@ const rootRouteChildren: RootRouteChildren = {
   AuthRoute: AuthRoute,
   ResetPasswordRoute: ResetPasswordRoute,
   ApiPublicDavPushRoute: ApiPublicDavPushRoute,
+  ApiPublicDavPushTickRoute: ApiPublicDavPushTickRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
