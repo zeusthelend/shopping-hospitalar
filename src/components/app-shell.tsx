@@ -303,3 +303,44 @@ export function AppShell({ children }: { children: ReactNode }) {
     </div>
   );
 }
+
+function PinGate({ onDone }: { onDone: () => void }) {
+  const [pin, setPin] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
+  async function submit(e: React.FormEvent) {
+    e.preventDefault();
+    setBusy(true);
+    setError("");
+    const { data, error: rpcError } = await supabase.rpc("redeem_access_pin", { _pin: pin });
+    setBusy(false);
+    if (rpcError || !data) {
+      setError("PIN inválido, expirado ou já utilizado.");
+      return;
+    }
+    onDone();
+  }
+  return (
+    <form onSubmit={submit} className="mx-auto mt-16 max-w-sm space-y-4 rounded-xl border bg-card p-6 shadow-card">
+      <h1 className="text-lg font-bold">Acesso pendente</h1>
+      <p className="text-sm text-muted-foreground">
+        Digite o PIN de acesso fornecido por um administrador.
+      </p>
+      <input
+        value={pin}
+        onChange={(e) => setPin(e.target.value.replace(/\D/g, "").slice(0, 8))}
+        inputMode="numeric"
+        type="password"
+        placeholder="PIN de 8 dígitos"
+        className="w-full rounded-md border bg-background px-3 py-2 tracking-widest"
+      />
+      {error && <p className="text-sm text-destructive">{error}</p>}
+      <button
+        disabled={busy || pin.length !== 8}
+        className="w-full rounded-md bg-primary px-3 py-2 text-sm font-semibold text-primary-foreground disabled:opacity-50"
+      >
+        {busy ? "Verificando..." : "Liberar acesso"}
+      </button>
+    </form>
+  );
+}
