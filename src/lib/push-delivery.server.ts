@@ -1,6 +1,7 @@
 type PushTarget = { id: string; user_id: string; token: string };
 
 const GATEWAY_URL = "https://connector-gateway.lovable.dev/firebase_messaging";
+const DAV_ALERT_URL = "https://shopping-hospitalar.lovable.app/davs";
 
 async function sendFirebaseMessage(target: PushTarget, title: string, body: string) {
   const lovableApiKey = process.env["LOVABLE_API_KEY"];
@@ -24,7 +25,7 @@ async function sendFirebaseMessage(target: PushTarget, title: string, body: stri
         webpush: {
           headers: { Urgency: "high", TTL: "86400" },
           notification: { title, body, icon: "/icon-192.png", badge: "/favicon.png", requireInteraction: true, tag: `dav-${target.id}`, renotify: true, vibrate: [300, 100, 300] },
-          fcm_options: { link: "/davs" },
+          fcm_options: { link: DAV_ALERT_URL },
         },
       },
     }),

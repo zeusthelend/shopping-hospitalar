@@ -24,3 +24,7 @@ cd <repository-name>
 npm i
 npm run dev
 ```
+
+## Android push notifications
+
+Configure Firebase Cloud Messaging for the Android application (`br.com.shoppinghospitalar.portal`) and place its `google-services.json` in `android/app/` (this file is intentionally not committed). Then run `npm run android:sync` before building the APK. Administrators and employees can register their devices from **Notificações → Ativar no celular**; DAV alerts are delivered through Firebase even when the app is in the background or the screen is locked.

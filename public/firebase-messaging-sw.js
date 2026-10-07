@@ -22,5 +22,7 @@ messaging.onBackgroundMessage((payload) => {
 self.addEventListener("notificationclick", (event) => {
   event.notification.close();
   const path = event.notification.data?.path || "/notificacoes";
-  event.waitUntil(clients.openWindow(path));
+  const url = new URL(path, self.location.origin).href;
+  if (new URL(url).origin !== self.location.origin) return;
+  event.waitUntil(clients.openWindow(url));
 });

@@ -1,6 +1,6 @@
 import { Link, useNavigate } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   ArrowLeft,
   Check,
@@ -87,19 +87,26 @@ export function ChatWorkspace({ conversationId }: { conversationId?: string | un
   const qc = useQueryClient();
   const navigate = useNavigate();
   const [search, setSearch] = useState("");
-  const { data: profiles = [] } = useQuery({
+  const { data: profiles = [], isError: profilesError, refetch: refetchProfiles } = useQuery({
     queryKey: ["chat-profiles"],
     queryFn: async () => {
       const { data, error } = await supabase
         .from("profiles")
         .select("id,full_name,avatar_url,status,last_seen_at")
         .eq("active", true)
+        .eq("approved", true)
         .order("full_name");
       if (error) throw error;
       return data as ProfileLite[];
     },
+    refetchInterval: 30_000,
   });
-  const { data: memberships = [] } = useQuery({
+  const {
+    data: memberships = [],
+    isError: membershipsError,
+    isFetching: membershipsFetching,
+    refetch: refetchMemberships,
+  } = useQuery({
     queryKey: ["chat-conversations", me?.profile?.id],
     enabled: !!me?.profile,
     queryFn: async () => {
@@ -113,6 +120,7 @@ export function ChatWorkspace({ conversationId }: { conversationId?: string | un
       if (error) throw error;
       return data as ConversationRow[];
     },
+    refetchInterval: 15_000,
   });
   const conversationIds = memberships.map((x) => x.conversation_id);
   const { data: allParticipants = [] } = useQuery({
@@ -126,8 +134,8 @@ export function ChatWorkspace({ conversationId }: { conversationId?: string | un
       if (error) throw error;
       return data ?? [];
     },
+    refetchInterval: 15_000,
   });
-  const profileMap = useMemo(() => new Map(profiles.map((p) => [p.id, p])), [profiles]);
   const filtered = memberships.filter((m) =>
     conversationTitle(m, allParticipants, me?.profile?.id)
       .toLowerCase()
@@ -177,39 +185,54 @@ export function ChatWorkspace({ conversationId }: { conversationId?: string | un
         </div>
         <ScrollArea className="h-[calc(100vh-14rem)] lg:h-[calc(100vh-14rem)]">
           <div className="space-y-1 px-2 pb-3">
-            {filtered.map((m) => {
-              const title = conversationTitle(m, allParticipants, me?.profile?.id);
-              const peer = conversationPeer(m, allParticipants, me?.profile?.id);
-              return (
-                <Link
-                  key={m.conversation_id}
-                  to="/chat/$conversationId"
-                  params={{ conversationId: m.conversation_id }}
-                  className="flex items-center gap-3 rounded-md p-3 hover:bg-muted"
-                  activeProps={{ className: "!bg-primary/10" }}
-                >
-                  <ConversationAvatar
-                    conversation={m.chat_conversations}
-                    title={title}
-                    peer={peer}
-                  />
-                  <div className="min-w-0 flex-1">
-                    <div className="flex items-center gap-2">
-                      <strong className="truncate text-sm">{title}</strong>
-                      {m.pinned && <span className="text-xs text-highlight">●</span>}
+            {membershipsError ? (
+              <div className="space-y-3 px-4 py-8 text-center text-sm">
+                <p className="text-destructive">Não foi possível carregar suas conversas.</p>
+                <Button variant="outline" size="sm" onClick={() => void refetchMemberships()}>
+                  Tentar novamente
+                </Button>
+              </div>
+            ) : profilesError ? (
+              <div className="space-y-3 px-4 py-8 text-center text-sm">
+                <p className="text-destructive">Não foi possível carregar os funcionários.</p>
+                <Button variant="outline" size="sm" onClick={() => void refetchProfiles()}>
+                  Tentar novamente
+                </Button>
+              </div>
+            ) : filtered.length ? (
+              filtered.map((m) => {
+                const title = conversationTitle(m, allParticipants, me?.profile?.id);
+                const peer = conversationPeer(m, allParticipants, me?.profile?.id);
+                return (
+                  <Link
+                    key={m.conversation_id}
+                    to="/chat/$conversationId"
+                    params={{ conversationId: m.conversation_id }}
+                    className="flex items-center gap-3 rounded-md p-3 hover:bg-muted"
+                    activeProps={{ className: "!bg-primary/10" }}
+                  >
+                    <ConversationAvatar
+                      conversation={m.chat_conversations}
+                      title={title}
+                      peer={peer}
+                    />
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center gap-2">
+                        <strong className="truncate text-sm">{title}</strong>
+                        {m.pinned && <span className="text-xs text-highlight">●</span>}
+                      </div>
+                      <p className="truncate text-xs text-muted-foreground">
+                        {m.chat_conversations?.kind === "group"
+                          ? "Grupo corporativo"
+                          : livePresence(peer) === "online"
+                            ? "Online"
+                            : "Offline"}
+                      </p>
                     </div>
-                    <p className="truncate text-xs text-muted-foreground">
-                      {m.chat_conversations?.kind === "group"
-                        ? "Grupo corporativo"
-                        : livePresence(peer) === "online"
-                          ? "Online"
-                          : "Offline"}
-                    </p>
-                  </div>
-                </Link>
-              );
-            })}
-            {!filtered.length && (
+                  </Link>
+                );
+              })
+            ) : (
               <div className="px-4 py-12 text-center text-sm text-muted-foreground">
                 Nenhuma conversa encontrada.
               </div>
@@ -225,6 +248,24 @@ export function ChatWorkspace({ conversationId }: { conversationId?: string | un
             participants={allParticipants.filter((p) => p.conversation_id === conversationId)}
             me={me.profile}
           />
+        ) : conversationId && membershipsError ? (
+          <div className="grid h-full place-items-center p-8 text-center">
+            <div>
+              <MessageCircle className="mx-auto h-10 w-10 text-destructive" />
+              <p className="mt-3 text-sm text-destructive">Não foi possível verificar o acesso.</p>
+              <Button
+                className="mt-4"
+                variant="outline"
+                onClick={() => void refetchMemberships()}
+              >
+                Tentar novamente
+              </Button>
+            </div>
+          </div>
+        ) : conversationId && membershipsFetching && !active ? (
+          <div className="grid h-full place-items-center p-8 text-center text-sm text-muted-foreground">
+            Carregando conversa...
+          </div>
         ) : conversationId ? (
           <div className="grid h-full place-items-center p-8 text-center">
             <div>
@@ -276,7 +317,11 @@ function Conversation({
   const [editing, setEditing] = useState<MessageRow | null>(null);
   const [text, setText] = useState("");
   const [sending, setSending] = useState(false);
-  const { data: messages = [] } = useQuery({
+  const {
+    data: messages = [],
+    isError: messagesError,
+    refetch: refetchMessages,
+  } = useQuery({
     queryKey: ["chat-messages", id],
     queryFn: async () => {
       const { data, error } = await supabase
@@ -289,6 +334,7 @@ function Conversation({
       if (error) throw error;
       return data as MessageRow[];
     },
+    refetchInterval: 10_000,
   });
   useEffect(() => {
     const channel = supabase
@@ -308,12 +354,20 @@ function Conversation({
         { event: "*", schema: "public", table: "chat_reactions" },
         () => void qc.invalidateQueries({ queryKey: ["chat-messages", id] }),
       )
-      .subscribe();
+      .subscribe((status) => {
+        if (status === "CHANNEL_ERROR" || status === "TIMED_OUT" || status === "CLOSED") {
+          void qc.invalidateQueries({ queryKey: ["chat-messages", id] });
+          void qc.invalidateQueries({ queryKey: ["chat-conversations", me.id] });
+        }
+      });
     void supabase
       .from("chat_participants")
       .update({ last_read_at: new Date().toISOString() })
       .eq("conversation_id", id)
-      .eq("user_id", me.id);
+      .eq("user_id", me.id)
+      .then(({ error }) => {
+        if (error) console.error("Unable to mark chat conversation read", error);
+      });
     return () => {
       void supabase.removeChannel(channel);
     };
@@ -352,14 +406,19 @@ function Conversation({
             attachment_size: file.size,
           };
         }
-        const { error } = await supabase.from("chat_messages").insert({
-          conversation_id: id,
-          sender_id: me.id,
-          body: text.trim(),
-          reply_to_id: reply?.id ?? null,
-          ...attachment,
-        });
+        const { data: inserted, error } = await supabase
+          .from("chat_messages")
+          .insert({
+            conversation_id: id,
+            sender_id: me.id,
+            body: text.trim(),
+            reply_to_id: reply?.id ?? null,
+            ...attachment,
+          })
+          .select("id")
+          .single();
         if (error) throw error;
+        if (!inserted?.id) throw new Error("O servidor não confirmou o envio da mensagem.");
       }
       setText("");
       setFile(null);
@@ -402,22 +461,36 @@ function Conversation({
       </header>
       <ScrollArea className="flex-1">
         <div className="mx-auto max-w-3xl space-y-4 p-4 sm:p-6">
-          {messages.map((message) => (
-            <MessageItem
-              key={message.id}
-              message={message}
-              mine={message.sender_id === me.id}
-              all={messages}
-              onReply={() => {
-                setReply(message);
-                setEditing(null);
-                inputRef.current?.focus();
-              }}
-              onEdit={() => startEdit(message)}
-              onChanged={() => void qc.invalidateQueries({ queryKey: ["chat-messages", id] })}
-              userId={me.id}
-            />
-          ))}
+          {messagesError ? (
+            <div className="rounded-lg border border-destructive/30 bg-destructive/5 p-4 text-sm">
+              <p className="text-destructive">Não foi possível carregar as mensagens.</p>
+              <Button
+                variant="outline"
+                size="sm"
+                className="mt-3"
+                onClick={() => void refetchMessages()}
+              >
+                Tentar novamente
+              </Button>
+            </div>
+          ) : (
+            messages.map((message) => (
+              <MessageItem
+                key={message.id}
+                message={message}
+                mine={message.sender_id === me.id}
+                all={messages}
+                onReply={() => {
+                  setReply(message);
+                  setEditing(null);
+                  inputRef.current?.focus();
+                }}
+                onEdit={() => startEdit(message)}
+                onChanged={() => void qc.invalidateQueries({ queryKey: ["chat-messages", id] })}
+                userId={me.id}
+              />
+            ))
+          )}
           <div ref={bottomRef} />
         </div>
       </ScrollArea>
@@ -739,13 +812,14 @@ function NewConversationDialog({
         _members: selected,
       });
       if (error) throw error;
-      const data = { id: conversationId as string };
+      if (typeof conversationId !== "string" || !conversationId)
+        throw new Error("O servidor não confirmou a criação da conversa.");
       await qc.invalidateQueries({ queryKey: ["chat-conversations"] });
       await qc.invalidateQueries({ queryKey: ["chat-participants"] });
       setOpen(false);
       setSelected([]);
       setName("");
-      nav({ to: "/chat/$conversationId", params: { conversationId: data.id } });
+      nav({ to: "/chat/$conversationId", params: { conversationId } });
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Não foi possível criar a conversa.");
     } finally {

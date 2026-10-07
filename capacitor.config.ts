@@ -5,7 +5,7 @@ const config: CapacitorConfig = {
   appName: "Shopping Hospitalar",
   webDir: "dist",
   server: {
-    url: "https://frame-capture-cheer.lovable.app",
+    url: "https://shopping-hospitalar.lovable.app",
     cleartext: false,
   },
   android: {

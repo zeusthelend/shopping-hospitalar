@@ -57,8 +57,11 @@ function Page() {
       return data ?? [];
     },
   });
-  async function setPref(field: "dav_push_enabled" | "presence_sound_enabled", value: boolean) {
-    if (!userId) return;
+  async function setPref(
+    field: "dav_push_enabled" | "presence_sound_enabled",
+    value: boolean,
+  ) {
+    if (!userId) return false;
     const result =
       field === "dav_push_enabled"
         ? await supabase
@@ -69,9 +72,10 @@ function Page() {
             .upsert({ user_id: userId, presence_sound_enabled: value }, { onConflict: "user_id" });
     if (result.error) {
       toast.error("Não foi possível salvar a preferência.");
-      return;
+      return false;
     }
     await qc.invalidateQueries({ queryKey: ["notification-preferences", userId] });
+    return true;
   }
   function registrationMessage(status: PushRegistrationResult["status"]) {
     if (status === "open-in-new-tab")
@@ -88,11 +92,15 @@ function Page() {
     try {
       const result = await registerPushNotifications(userId);
       if (result.status === "registered") {
-        await setPref("dav_push_enabled", true);
-        toast.success("Alertas push ativados neste aparelho.");
+        if (await setPref("dav_push_enabled", true))
+          toast.success("Alertas push ativados neste aparelho.");
       } else toast.error(registrationMessage(result.status));
-    } catch {
-      toast.error("Não foi possível ativar os alertas neste aparelho.");
+    } catch (error) {
+      toast.error(
+        error instanceof Error
+          ? `Não foi possível ativar os alertas: ${error.message}`
+          : "Não foi possível ativar os alertas neste aparelho.",
+      );
     } finally {
       setRegistering(false);
     }
