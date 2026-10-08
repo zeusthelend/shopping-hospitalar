@@ -1,4 +1,4 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Outlet, useMatch } from "@tanstack/react-router";
 import { ChatWorkspace } from "@/components/chat-workspace";
 export const Route = createFileRoute("/_authenticated/chat")({
   head: () => ({
@@ -11,5 +11,10 @@ export const Route = createFileRoute("/_authenticated/chat")({
       { name: "twitter:card", content: "summary_large_image" },
     ],
   }),
-  component: () => <ChatWorkspace />,
+  component: ChatPage,
 });
+
+function ChatPage() {
+  const child = useMatch({ from: "/_authenticated/chat/$conversationId", shouldThrow: false });
+  return child ? <Outlet /> : <ChatWorkspace />;
+}
