@@ -33,10 +33,14 @@ export function useMe() {
     queryKey: ["me", uid],
     enabled: !!uid,
     queryFn: async () => {
-      const [{ data: profile }, { data: roles }] = await Promise.all([
+      const [profileResult, rolesResult] = await Promise.all([
         supabase.from("profiles").select("*").eq("id", uid!).maybeSingle(),
         supabase.from("user_roles").select("role").eq("user_id", uid!),
       ]);
+      if (profileResult.error) throw profileResult.error;
+      if (rolesResult.error) throw rolesResult.error;
+      const profile = profileResult.data;
+      const roles = rolesResult.data;
       const r = (roles ?? []).map((x) => x.role as AppRole);
       return {
         profile,

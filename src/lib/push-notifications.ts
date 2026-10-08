@@ -91,14 +91,24 @@ async function registerAndroidPush(
     : await PushNotifications.checkPermissions();
   if (permission.receive !== "granted") return { status: "denied" };
 
-  await PushNotifications.createChannel({
-    id: "dav_alerts",
-    name: "DAVs vencidos",
-    description: "Alertas de documentos DAV vencidos",
-    importance: 5,
-    visibility: 1,
-    vibration: true,
-  });
+  await Promise.all([
+    PushNotifications.createChannel({
+      id: "dav_alerts",
+      name: "DAVs vencidos",
+      description: "Alertas de documentos DAV vencidos",
+      importance: 5,
+      visibility: 1,
+      vibration: true,
+    }),
+    PushNotifications.createChannel({
+      id: "chat_messages",
+      name: "Mensagens do chat",
+      description: "Alertas de mensagens individuais e de grupo",
+      importance: 5,
+      visibility: 1,
+      vibration: true,
+    }),
+  ]);
 
   let timeout: number | undefined;
   let registrationListener: PluginListenerHandle | undefined;

@@ -47,6 +47,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
 import { initials, livePresence } from "@/components/brand";
+import { notifyChatMessage } from "@/lib/push-notifications.functions";
 
 type ProfileLite = {
   id: string;
@@ -427,6 +428,9 @@ function Conversation({
           .single();
         if (error) throw error;
         if (!inserted?.id) throw new Error("O servidor não confirmou o envio da mensagem.");
+        void notifyChatMessage({ data: { messageId: inserted.id } }).catch((error: unknown) =>
+          console.error("Chat message push notification failed", error),
+        );
       }
       setText("");
       setFile(null);
