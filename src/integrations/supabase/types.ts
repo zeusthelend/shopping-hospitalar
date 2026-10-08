@@ -14,6 +14,24 @@ export type Database = {
   }
   public: {
     Tables: {
+      access_pin_attempts: {
+        Row: {
+          attempts: number
+          user_id: string
+          window_started_at: string
+        }
+        Insert: {
+          attempts?: number
+          user_id: string
+          window_started_at?: string
+        }
+        Update: {
+          attempts?: number
+          user_id?: string
+          window_started_at?: string
+        }
+        Relationships: []
+      }
       access_pins: {
         Row: {
           created_at: string
@@ -522,18 +540,21 @@ export type Database = {
       }
       notification_preferences: {
         Row: {
+          chat_push_enabled: boolean
           dav_push_enabled: boolean
           presence_sound_enabled: boolean
           updated_at: string
           user_id: string
         }
         Insert: {
+          chat_push_enabled?: boolean
           dav_push_enabled?: boolean
           presence_sound_enabled?: boolean
           updated_at?: string
           user_id: string
         }
         Update: {
+          chat_push_enabled?: boolean
           dav_push_enabled?: boolean
           presence_sound_enabled?: boolean
           updated_at?: string
@@ -733,6 +754,10 @@ export type Database = {
     }
     Functions: {
       can_delete_davs: { Args: { _user_id: string }; Returns: boolean }
+      can_manage_member_position: {
+        Args: { _member: string; _position: string }
+        Returns: boolean
+      }
       create_access_pin: { Args: { _label: string }; Returns: string }
       create_chat_conversation: {
         Args: { _kind: string; _members: string[]; _name: string }
@@ -745,6 +770,7 @@ export type Database = {
         }
         Returns: boolean
       }
+      is_approved_user: { Args: never; Returns: boolean }
       is_chat_admin: {
         Args: { _conversation_id: string; _user_id: string }
         Returns: boolean
@@ -753,9 +779,12 @@ export type Database = {
         Args: { _conversation_id: string; _user_id: string }
         Returns: boolean
       }
-      is_approved_user: { Args: Record<PropertyKey, never>; Returns: boolean }
       is_manager: { Args: { _user_id: string }; Returns: boolean }
       redeem_access_pin: { Args: { _pin: string }; Returns: boolean }
+      set_member_position: {
+        Args: { _member: string; _position: string }
+        Returns: undefined
+      }
     }
     Enums: {
       app_role: "admin" | "diretor" | "gerente" | "funcionario"

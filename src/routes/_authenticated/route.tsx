@@ -115,7 +115,7 @@ function PendingAccess({
           <>
             <p className="text-sm text-muted-foreground">
               Para proteger os dados da empresa, o acesso só é liberado com um PIN de uso único
-              fornecido por um administrador.
+              fornecido por um administrador ou gerente.
             </p>
             <form onSubmit={redeem} className="space-y-3">
               <Input

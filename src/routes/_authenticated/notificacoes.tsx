@@ -1,6 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { AlertTriangle, Bell, BellRing, Volume2 } from "lucide-react";
+import { AlertTriangle, Bell, BellRing, MessageSquare, Volume2 } from "lucide-react";
 import { toast } from "sonner";
 import { PageHeader, Empty } from "@/components/brand";
 import { supabase } from "@/integrations/supabase/client";
@@ -15,7 +15,7 @@ export const Route = createFileRoute("/_authenticated/notificacoes")({
   head: () => ({
     meta: [
       { title: "Notificações — Shopping Hospitalar" },
-      { name: "description", content: "Central de alertas de DAVs e presença." },
+      { name: "description", content: "Alertas push para mensagens e DAVs." },
       { property: "og:title", content: "Notificações — Shopping Hospitalar" },
       { property: "og:description", content: "Central de alertas de DAVs e presença." },
       { property: "og:type", content: "website" },
@@ -58,19 +58,20 @@ function Page() {
     },
   });
   async function setPref(
-    field: "dav_push_enabled" | "presence_sound_enabled",
+    field: "dav_push_enabled" | "chat_push_enabled" | "presence_sound_enabled",
     value: boolean,
   ) {
     if (!userId) return false;
-    const result =
+    const update =
       field === "dav_push_enabled"
-        ? await supabase
-            .from("notification_preferences")
-            .upsert({ user_id: userId, dav_push_enabled: value }, { onConflict: "user_id" })
-        : await supabase
-            .from("notification_preferences")
-            .upsert({ user_id: userId, presence_sound_enabled: value }, { onConflict: "user_id" });
-    if (result.error) {
+        ? { dav_push_enabled: value }
+        : field === "chat_push_enabled"
+          ? { chat_push_enabled: value }
+          : { presence_sound_enabled: value };
+    const { error } = await supabase
+      .from("notification_preferences")
+      .upsert({ user_id: userId, ...update }, { onConflict: "user_id" });
+    if (error) {
       toast.error("Não foi possível salvar a preferência.");
       return false;
     }
@@ -109,7 +110,7 @@ function Page() {
     <>
       <PageHeader
         title="Notificações"
-        subtitle="Alertas de vencimento e atividade da equipe."
+        subtitle="Alertas push para mensagens e vencimentos."
         action={
           <Button onClick={enableNotifications} disabled={registering}>
             <BellRing className="h-4 w-4" />
@@ -117,12 +118,18 @@ function Page() {
           </Button>
         }
       />
-      <section className="mb-6 grid gap-3 sm:grid-cols-2">
+      <section className="mb-6 grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
         <Preference
           icon={Bell}
           label="Alertas de DAV vencido"
           checked={prefs?.dav_push_enabled ?? true}
           onChange={(v) => setPref("dav_push_enabled", v)}
+        />
+        <Preference
+          icon={MessageSquare}
+          label="Mensagens individuais e de grupo"
+          checked={prefs?.chat_push_enabled ?? true}
+          onChange={(v) => setPref("chat_push_enabled", v)}
         />
         <Preference
           icon={Volume2}

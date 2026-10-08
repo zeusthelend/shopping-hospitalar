@@ -257,7 +257,7 @@ export function AppShell({ children }: { children: ReactNode }) {
         <Logo light />
       </div>
       <div className="flex-1 overflow-y-auto">
-        <NavList isAdmin={!!me?.isAdmin} onNavigate={onNavigate} />
+        <NavList isAdmin={!!me?.isAdmin || !!me?.roles.includes("gerente")} onNavigate={onNavigate} />
       </div>
       {userCard}
     </div>
@@ -344,7 +344,7 @@ function PinGate({ onDone }: { onDone: () => void }) {
     <form onSubmit={submit} className="mx-auto mt-16 max-w-sm space-y-4 rounded-xl border bg-card p-6 shadow-card">
       <h1 className="text-lg font-bold">Acesso pendente</h1>
       <p className="text-sm text-muted-foreground">
-        Digite o PIN de acesso fornecido por um administrador.
+        Digite o PIN de acesso fornecido por um administrador ou gerente.
       </p>
       <input
         value={pin}

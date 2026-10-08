@@ -100,7 +100,7 @@ export const requireSupabaseAuth = createMiddleware({ type: 'function' }).server
       throw new Error('Unauthorized: No user ID found in token');
     }
 
-    const { data: isApproved, error: approvalError } = await supabase.rpc('is_approved_user', {});
+    const { data: isApproved, error: approvalError } = await supabase.rpc('is_approved_user');
     if (approvalError) {
       console.error('[Supabase] Failed to verify account approval', approvalError);
       throw new Error('Unable to verify account approval');

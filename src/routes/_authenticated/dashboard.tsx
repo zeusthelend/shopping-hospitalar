@@ -7,10 +7,12 @@ import { Empty, livePresence, PageHeader } from "@/components/brand";
 
 export const Route = createFileRoute("/_authenticated/dashboard")({
   head: () => ({ meta: [
-    { title: "Início — Shopping Hospitalar" },
-    { name: "description", content: "Resumo do portal corporativo Shopping Hospitalar." },
-    { property: "og:title", content: "Início — Shopping Hospitalar" },
-    { property: "og:description", content: "Resumo do portal corporativo Shopping Hospitalar." },
+    { title: "Sejam bem-vindas(a) ao SHOPING HOSPITALAR!" },
+    { name: "description", content: "Sejam bem-vindas(a) ao SHOPING HOSPITALAR! Portal de acesso reservado à equipe." },
+    { property: "og:title", content: "Sejam bem-vindas(a) ao SHOPING HOSPITALAR!" },
+    { property: "og:description", content: "Sejam bem-vindas(a) ao SHOPING HOSPITALAR! Portal de acesso reservado à equipe." },
+    { property: "og:type", content: "website" },
+    { name: "twitter:card", content: "summary_large_image" },
   ]}),
   component: Dashboard,
 });
@@ -41,7 +43,7 @@ function Dashboard() {
     ["Novos documentos", data?.documents.length ?? 0, FileText, "text-highlight bg-highlight/10"],
   ] as const;
   return <>
-    <PageHeader title={`Olá, ${first}`} subtitle="Aqui está o que está acontecendo hoje." />
+    <PageHeader title="Sejam bem-vindas(a) ao SHOPING HOSPITALAR!" subtitle={`Olá, ${first}.`} />
     <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">{cards.map(([label,value,Icon,style]) => <div key={label} className="rounded-xl border bg-card p-5 shadow-card"><div className={`mb-4 grid h-10 w-10 place-items-center rounded-lg ${style}`}><Icon className="h-5 w-5" /></div><div className="text-3xl font-bold">{value}</div><div className="mt-1 text-sm text-muted-foreground">{label}</div></div>)}</div>
     {!!data?.overdueDavs.length&&<div className="mt-5 flex items-center gap-3 rounded-lg border border-destructive/30 bg-destructive/10 p-4 text-destructive"><AlertTriangle className="h-5 w-5"/><strong>{data.overdueDavs.length} DAV{data.overdueDavs.length>1?'s':''} vencido{data.overdueDavs.length>1?'s':''}</strong></div>}
     <div className="mt-6 grid gap-6 xl:grid-cols-2">

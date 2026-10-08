@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { MemberPositions } from "@/components/member-positions";
 
 export const Route = createFileRoute("/_authenticated/admin")({
   head: () => ({
@@ -18,6 +19,8 @@ export const Route = createFileRoute("/_authenticated/admin")({
       { name: "description", content: "Gestão de cargos, departamentos e identidade." },
       { property: "og:title", content: "Administração — Shopping Hospitalar" },
       { property: "og:description", content: "Gestão corporativa." },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary_large_image" },
     ],
   }),
   component: Admin,
@@ -25,20 +28,25 @@ export const Route = createFileRoute("/_authenticated/admin")({
 
 function Admin() {
   const { data: me } = useMe();
-  if (me && !me.isAdmin) return <Navigate to="/dashboard" replace />;
+  if (me && !me.isAdmin && !me.roles.includes("gerente")) return <Navigate to="/dashboard" replace />;
   return (
     <>
       <PageHeader
         title="Administração"
         subtitle="Gerencie a estrutura, a identidade e o acesso à empresa."
       />
-      <Tabs defaultValue="departments">
+      <Tabs defaultValue="members">
         <TabsList className="mb-5 flex h-auto flex-wrap">
+          <TabsTrigger value="members">Cargos dos membros</TabsTrigger>
+          {me?.isAdmin && <>
           <TabsTrigger value="departments">Departamentos</TabsTrigger>
           <TabsTrigger value="positions">Cargos</TabsTrigger>
           <TabsTrigger value="branding">Identidade</TabsTrigger>
+          </>}
           <TabsTrigger value="access">PINs de acesso</TabsTrigger>
         </TabsList>
+        <TabsContent value="members"><MemberPositions /></TabsContent>
+        {me?.isAdmin && <>
         <TabsContent value="departments">
           <Entity type="departments" label="departamento" />
         </TabsContent>
@@ -48,6 +56,7 @@ function Admin() {
         <TabsContent value="branding">
           <Branding />
         </TabsContent>
+        </>}
         <TabsContent value="access">
           <AccessPins />
         </TabsContent>

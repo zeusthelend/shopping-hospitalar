@@ -1,5 +1,10 @@
 # Roadmap
 
+- [ ] Confirmar que Lovable Cloud está ativo e saudável
+- [ ] Corrigir e validar chat individual e em grupo
+- [ ] Permitir cargos profissionais e PINs para administradores e gerentes sem elevar privilégios
+- [ ] Atualizar boas-vindas e informações de compartilhamento de /dashboard
+
 - [x] Recomendação de funcionários por IA para gestores
 - [x] Exportação CSV de funcionários com cargos e departamentos
 - [x] Cadastro e agendamento de reuniões

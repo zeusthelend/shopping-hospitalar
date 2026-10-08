@@ -17,3 +17,6 @@
 - Persist corporate chat as member-scoped conversations with database-enforced access and dedicated conversation URLs, so history stays synchronized and isolated.
 - Package Android test builds with Capacitor using the stable hosted app URL, preserving the same authenticated cloud data and realtime features.
 - Deliver DAV push notifications through Firebase Messaging, storing member-owned device tokens and sending only from authenticated server code or the protected scheduler endpoint.
+- Chat's parent route renders Outlet for a selected conversation so nested conversation URLs mount their content.
+- Change professional positions through a checked database RPC; manager changes are department-scoped and never modify user_roles.
+- Approve first access through a single-use PIN RPC with transaction-local approval and attempt limits; corporate reads require approved membership.
