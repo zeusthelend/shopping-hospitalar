@@ -540,21 +540,18 @@ export type Database = {
       }
       notification_preferences: {
         Row: {
-          chat_push_enabled: boolean
           dav_push_enabled: boolean
           presence_sound_enabled: boolean
           updated_at: string
           user_id: string
         }
         Insert: {
-          chat_push_enabled?: boolean
           dav_push_enabled?: boolean
           presence_sound_enabled?: boolean
           updated_at?: string
           user_id: string
         }
         Update: {
-          chat_push_enabled?: boolean
           dav_push_enabled?: boolean
           presence_sound_enabled?: boolean
           updated_at?: string
