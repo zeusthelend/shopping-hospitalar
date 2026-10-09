@@ -71,6 +71,13 @@
       "when": 1791422000000,
       "tag": "0009_chat_message_push_notifications",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1791504925841,
+      "tag": "0010_chat_push_and_private_audio_calls",
+      "breakpoints": true
     }
   ]
 }

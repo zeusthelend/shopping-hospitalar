@@ -140,6 +140,64 @@ export type Database = {
         }
         Relationships: []
       }
+      chat_calls: {
+        Row: {
+          answer: string | null
+          callee_id: string
+          caller_id: string
+          conversation_id: string
+          created_at: string
+          id: string
+          offer: string
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          answer?: string | null
+          callee_id: string
+          caller_id: string
+          conversation_id: string
+          created_at?: string
+          id?: string
+          offer: string
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          answer?: string | null
+          callee_id?: string
+          caller_id?: string
+          conversation_id?: string
+          created_at?: string
+          id?: string
+          offer?: string
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "chat_calls_callee_id_fkey"
+            columns: ["callee_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "chat_calls_caller_id_fkey"
+            columns: ["caller_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "chat_calls_conversation_id_fkey"
+            columns: ["conversation_id"]
+            isOneToOne: false
+            referencedRelation: "chat_conversations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       chat_conversations: {
         Row: {
           created_at: string
@@ -540,18 +598,21 @@ export type Database = {
       }
       notification_preferences: {
         Row: {
+          chat_push_enabled: boolean
           dav_push_enabled: boolean
           presence_sound_enabled: boolean
           updated_at: string
           user_id: string
         }
         Insert: {
+          chat_push_enabled?: boolean
           dav_push_enabled?: boolean
           presence_sound_enabled?: boolean
           updated_at?: string
           user_id: string
         }
         Update: {
+          chat_push_enabled?: boolean
           dav_push_enabled?: boolean
           presence_sound_enabled?: boolean
           updated_at?: string
@@ -778,9 +839,17 @@ export type Database = {
       }
       is_manager: { Args: { _user_id: string }; Returns: boolean }
       redeem_access_pin: { Args: { _pin: string }; Returns: boolean }
+      respond_chat_call: {
+        Args: { _action: string; _answer?: string; _call: string }
+        Returns: undefined
+      }
       set_member_position: {
         Args: { _member: string; _position: string }
         Returns: undefined
+      }
+      start_chat_call: {
+        Args: { _callee: string; _conversation: string; _offer: string }
+        Returns: string
       }
     }
     Enums: {
