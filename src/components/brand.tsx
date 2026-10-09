@@ -2,12 +2,20 @@ import { useQuery } from "@tanstack/react-query";
 import officialLogo from "@/assets/shopping-hospitalar-logo.jpeg.asset.json";
 import { supabase } from "@/integrations/supabase/client";
 import { cn } from "@/lib/utils";
+import { useMe } from "@/lib/auth";
 
 export function useSettings() {
+  const { data: me } = useMe();
   return useQuery({
-    queryKey: ["settings"],
+    queryKey: ["settings", me?.profile?.id],
+    enabled: !!me?.profile?.active && !!me.profile.approved,
     queryFn: async () => {
-      const { data } = await supabase.from("app_settings").select("*").eq("id", 1).maybeSingle();
+      const { data, error } = await supabase
+        .from("app_settings")
+        .select("*")
+        .eq("id", 1)
+        .maybeSingle();
+      if (error) throw error;
       return data;
     },
   });
