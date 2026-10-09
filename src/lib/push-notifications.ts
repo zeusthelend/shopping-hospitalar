@@ -1,8 +1,9 @@
 import { Capacitor, type PluginListenerHandle } from "@capacitor/core";
 import { getApp, getApps, initializeApp } from "firebase/app";
-import { getMessaging, getToken, isSupported } from "firebase/messaging";
+import { getMessaging, getToken, isSupported, onMessage } from "firebase/messaging";
 import { PushNotifications } from "@capacitor/push-notifications";
 import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
 
 const appId = import.meta.env["VITE_LOVABLE_CONNECTOR_FIREBASE_MESSAGING_APP_ID"];
 const vapidKey = import.meta.env["VITE_LOVABLE_CONNECTOR_FIREBASE_MESSAGING_VAPID_KEY"];
@@ -16,6 +17,76 @@ const firebaseConfig = {
 export type PushRegistrationResult =
   | { status: "registered" }
   | { status: "not-configured" | "unsupported" | "open-in-new-tab" | "denied" };
+
+export function listenForForegroundPush() {
+  let cancelled = false;
+  let cleanup: (() => void) | undefined;
+
+  if (Capacitor.isNativePlatform()) {
+    if (Capacitor.getPlatform() !== "android") return () => undefined;
+    void PushNotifications.addListener("pushNotificationReceived", (notification) => {
+      toast.info(notification.title || "Nova mensagem", {
+        description: notification.body || undefined,
+      });
+    })
+      .then((handle) => {
+        if (cancelled) void handle.remove();
+        else cleanup = () => void handle.remove();
+      })
+      .catch((error: unknown) => console.error("Unable to handle foreground push", error));
+
+    return () => {
+      cancelled = true;
+      cleanup?.();
+    };
+  }
+
+  void (async () => {
+    if (
+      !("Notification" in window) ||
+      !firebaseConfig.apiKey ||
+      !firebaseConfig.projectId ||
+      !appId ||
+      !firebaseConfig.messagingSenderId ||
+      !(await isSupported())
+    )
+      return;
+
+    const app = getApps().length ? getApp() : initializeApp(firebaseConfig);
+    const unsubscribe = onMessage(getMessaging(app), (payload) => {
+      const notification = payload.notification;
+      if (!notification || Notification.permission !== "granted") return;
+
+      const candidatePath = payload.data?.["path"];
+      const path =
+        typeof candidatePath === "string" &&
+        candidatePath.startsWith("/") &&
+        !candidatePath.startsWith("//")
+          ? candidatePath
+          : "/notificacoes";
+      void navigator.serviceWorker.ready
+        .then((registration) =>
+          registration.showNotification(notification.title || "Shopping Hospitalar", {
+            body: notification.body || "Você tem uma nova mensagem.",
+            icon: "/icon-192.png",
+            badge: "/favicon.png",
+            tag: path,
+            renotify: true,
+            data: { path },
+          }),
+        )
+        .catch((error: unknown) => console.error("Unable to display foreground push", error));
+    });
+
+    if (cancelled) unsubscribe();
+    else cleanup = unsubscribe;
+  })().catch((error: unknown) => console.error("Unable to listen for foreground push", error));
+
+  return () => {
+    cancelled = true;
+    cleanup?.();
+  };
+}
 
 export function listenForNativePushNavigation() {
   if (!Capacitor.isNativePlatform()) return () => undefined;
@@ -39,9 +110,14 @@ export function listenForNativePushNavigation() {
   };
 }
 
-export async function refreshNativePushToken(userId: string) {
-  if (!Capacitor.isNativePlatform() || Capacitor.getPlatform() !== "android") return;
-  await registerAndroidPush(userId, false);
+export async function refreshPushToken(userId: string) {
+  if (Capacitor.isNativePlatform()) {
+    if (Capacitor.getPlatform() === "android") await registerAndroidPush(userId, false);
+    return;
+  }
+  if ("Notification" in window && Notification.permission === "granted") {
+    await registerPushNotifications(userId);
+  }
 }
 
 export async function registerPushNotifications(userId: string): Promise<PushRegistrationResult> {

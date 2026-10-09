@@ -85,6 +85,13 @@
       "when": 1791508843144,
       "tag": "0011_restrict_member_and_brand_data",
       "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "7",
+      "when": 1791567487000,
+      "tag": "0012_add_chat_group_members",
+      "breakpoints": true
     }
   ]
 }

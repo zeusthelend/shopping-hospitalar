@@ -22,6 +22,7 @@ import {
   Smile,
   Square,
   Trash2,
+  UserPlus,
   Users,
 } from "lucide-react";
 import { toast } from "sonner";
@@ -263,6 +264,7 @@ export function ChatWorkspace({ conversationId }: { conversationId?: string | un
             conversation={active}
             title={conversationTitle(active, allParticipants, me.profile.id)}
             participants={allParticipants.filter((p) => p.conversation_id === conversationId)}
+            profiles={profiles.filter((profile) => profile.id !== me.profile.id)}
             me={me.profile}
           />
         ) : conversationId && membershipsError ? (
@@ -309,6 +311,7 @@ function Conversation({
   conversation,
   title,
   participants,
+  profiles,
   me,
 }: {
   conversation: ConversationRow;
@@ -320,6 +323,7 @@ function Conversation({
     last_read_at: string;
     profiles: ProfileLite | null;
   }>;
+  profiles: ProfileLite[];
   me: ProfileLite;
 }) {
   const id = conversation.conversation_id;
@@ -508,9 +512,19 @@ function Conversation({
           .single();
         if (error) throw error;
         if (!inserted?.id) throw new Error("O servidor não confirmou o envio da mensagem.");
-        void notifyChatMessage({ data: { messageId: inserted.id } }).catch((error: unknown) =>
-          console.error("Chat message push notification failed", error),
-        );
+        void notifyChatMessage({ data: { messageId: inserted.id } })
+          .then(({ delivered, failed }) => {
+            if (failed > 0)
+              toast.warning("Mensagem enviada, mas algumas notificações push falharam.");
+            else if (delivered === 0)
+              toast.info(
+                "Mensagem enviada. O destinatário ainda não tem um aparelho registrado para receber push.",
+              );
+          })
+          .catch((error: unknown) => {
+            console.error("Chat message push notification failed", error);
+            toast.warning("Mensagem enviada, mas não foi possível entregar a notificação push.");
+          });
       }
       setText("");
       setFile(null);
@@ -557,6 +571,14 @@ function Conversation({
             .filter((participant) => participant.user_id !== me.id && participant.profiles)
             .map((participant) => participant.profiles!)}
         />
+        {conversation.chat_conversations?.kind === "group" && conversation.is_admin && (
+          <AddGroupMembersDialog
+            conversationId={id}
+            profiles={profiles.filter(
+              (profile) => !participants.some((participant) => participant.user_id === profile.id),
+            )}
+          />
+        )}
       </header>
       <ScrollArea className="flex-1">
         <div className="mx-auto max-w-3xl space-y-4 p-4 sm:p-6">
@@ -1511,6 +1533,112 @@ function NewConversationDialog({
             {busy ? "Criando..." : "Criar grupo"}
           </Button>
         ) : null}
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+function AddGroupMembersDialog({
+  conversationId,
+  profiles,
+}: {
+  conversationId: string;
+  profiles: ProfileLite[];
+}) {
+  const [open, setOpen] = useState(false);
+  const [selected, setSelected] = useState<string[]>([]);
+  const [search, setSearch] = useState("");
+  const [busy, setBusy] = useState(false);
+  const qc = useQueryClient();
+  const visible = profiles.filter((profile) =>
+    profile.full_name.toLowerCase().includes(search.toLowerCase()),
+  );
+
+  function toggleMember(userId: string) {
+    setSelected((current) =>
+      current.includes(userId) ? current.filter((id) => id !== userId) : [...current, userId],
+    );
+  }
+
+  async function addMembers() {
+    if (!selected.length || busy) return;
+    setBusy(true);
+    try {
+      const { data: addedCount, error } = await supabase.rpc("add_chat_participants", {
+        _conversation_id: conversationId,
+        _members: selected,
+      });
+      if (error) throw error;
+      await Promise.all([
+        qc.invalidateQueries({ queryKey: ["chat-conversations"] }),
+        qc.invalidateQueries({ queryKey: ["chat-participants"] }),
+      ]);
+      toast.success(
+        addedCount === 1
+          ? "Pessoa adicionada ao grupo."
+          : `${addedCount} pessoas adicionadas ao grupo.`,
+      );
+      setOpen(false);
+      setSelected([]);
+      setSearch("");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Não foi possível adicionar pessoas.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <Dialog open={open} onOpenChange={setOpen}>
+      <DialogTrigger asChild>
+        <Button size="icon" variant="ghost" aria-label="Adicionar pessoas ao grupo">
+          <UserPlus />
+        </Button>
+      </DialogTrigger>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Adicionar pessoas ao grupo</DialogTitle>
+          <DialogDescription>
+            Selecione funcionários ativos e aprovados para incluir nesta conversa.
+          </DialogDescription>
+        </DialogHeader>
+        <div className="relative">
+          <Search className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
+          <Input
+            className="pl-9"
+            value={search}
+            onChange={(event) => setSearch(event.target.value)}
+            placeholder="Buscar funcionário"
+          />
+        </div>
+        <ScrollArea className="h-64">
+          <div className="space-y-1 pr-3">
+            {visible.map((profile) => (
+              <button
+                key={profile.id}
+                type="button"
+                onClick={() => toggleMember(profile.id)}
+                disabled={busy}
+                className="flex w-full items-center gap-3 rounded-md p-2 text-left hover:bg-muted"
+              >
+                <Checkbox checked={selected.includes(profile.id)} />
+                <Avatar className="h-8 w-8">
+                  <AvatarImage src={profile.avatar_url ?? undefined} />
+                  <AvatarFallback>{initials(profile.full_name)}</AvatarFallback>
+                </Avatar>
+                <span className="flex-1 text-sm font-medium">{profile.full_name}</span>
+              </button>
+            ))}
+            {!visible.length && (
+              <p className="px-2 py-8 text-center text-sm text-muted-foreground">
+                Não há outros funcionários disponíveis para adicionar.
+              </p>
+            )}
+          </div>
+        </ScrollArea>
+        <Button onClick={() => void addMembers()} disabled={busy || !selected.length}>
+          {busy ? "Adicionando..." : `Adicionar selecionados (${selected.length})`}
+        </Button>
       </DialogContent>
     </Dialog>
   );

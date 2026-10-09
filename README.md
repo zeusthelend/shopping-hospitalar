@@ -1,4 +1,4 @@
-# Shopping hospitalar 
+# Shopping hospitalar
 
 Implement exactly the screenshot and nothing else
 
@@ -27,4 +27,6 @@ npm run dev
 
 ## Android push notifications
 
-Configure Firebase Cloud Messaging for the Android application (`br.com.shoppinghospitalar.portal`) and place its `google-services.json` in `android/app/` (this file is intentionally not committed). Then run `npm run android:sync` before building the APK. Administrators and employees can register their devices from **Notificações → Ativar no celular**; DAV alerts are delivered through Firebase even when the app is in the background or the screen is locked.
+Configure Firebase Cloud Messaging for the Android application (`br.com.shoppinghospitalar.portal`) and place its `google-services.json` in `android/app/` (this file is intentionally not committed or tracked). Then run `npm run android:sync` before building the APK. Without this Firebase configuration, Android push notifications cannot be delivered.
+
+Administrators and employees must register each device from **Notificações → Ativar no celular** and grant notification permission. DAV and chat alerts are sent through Firebase and can appear when the app is in the background or closed, including while the screen is locked. Web users must enable browser notifications on the published HTTPS site; background delivery depends on the browser supporting Firebase Web Push.

@@ -105,7 +105,7 @@ export async function deliverChatMessagePush(userId: string, messageId: string) 
   const memberIds = [
     ...new Set((participants ?? []).map((participant) => participant.user_id)),
   ].filter((memberId) => memberId !== userId);
-  if (!memberIds.length) return { delivered: 0 };
+  if (!memberIds.length) return { delivered: 0, failed: 0 };
 
   const [
     { data: eligibleProfiles, error: profilesError },
@@ -133,7 +133,7 @@ export async function deliverChatMessagePush(userId: string, messageId: string) 
   const recipientIds = (eligibleProfiles ?? [])
     .map((profile) => profile.id)
     .filter((recipientId) => !optedOut.has(recipientId));
-  if (!recipientIds.length) return { delivered: 0 };
+  if (!recipientIds.length) return { delivered: 0, failed: 0 };
 
   const { data: targets, error: targetsError } = await supabaseAdmin
     .from("firebase_push_tokens")
@@ -142,6 +142,7 @@ export async function deliverChatMessagePush(userId: string, messageId: string) 
   if (targetsError) throw targetsError;
 
   let delivered = 0;
+  let failed = 0;
   for (const target of targets ?? []) {
     const result = await sendFirebaseMessage(target, {
       title: conversation.kind === "group" ? "Nova mensagem no grupo" : "Nova mensagem",
@@ -151,6 +152,7 @@ export async function deliverChatMessagePush(userId: string, messageId: string) 
       channelId: "chat_messages",
     });
     if (result === "sent") delivered += 1;
+    if (result === "failed") failed += 1;
     if (result === "stale") {
       const { error } = await supabaseAdmin
         .from("firebase_push_tokens")
@@ -159,7 +161,7 @@ export async function deliverChatMessagePush(userId: string, messageId: string) 
       if (error) throw error;
     }
   }
-  return { delivered };
+  return { delivered, failed };
 }
 
 export async function deliverOverdueDavPushes(onlyUserId?: string) {
