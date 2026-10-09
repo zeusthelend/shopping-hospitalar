@@ -78,6 +78,13 @@
       "when": 1791504925841,
       "tag": "0010_chat_push_and_private_audio_calls",
       "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "7",
+      "when": 1791508843144,
+      "tag": "0011_restrict_member_and_brand_data",
+      "breakpoints": true
     }
   ]
 }
