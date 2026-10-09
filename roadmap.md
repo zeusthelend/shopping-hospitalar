@@ -2,7 +2,7 @@
 
 - [ ] Adicionar assistente de DAVs com OpenAI, respeitando os dados autorizados
 - [ ] Ajustar push de mensagens e exclusão de conversas dentro e fora do chat
-- [ ] Confirmar o significado da opção “cal” antes de implementar
+- [ ] Implementar chamadas de áudio entre membros com sinalização privada
 
 - [ ] Confirmar que Lovable Cloud está ativo e saudável
 - [ ] Corrigir e validar chat individual e em grupo
