@@ -9,14 +9,18 @@ import {
   FileText,
   Image,
   MessageCircle,
+  Mic,
   MoreVertical,
   Paperclip,
+  Phone,
+  PhoneOff,
   Pencil,
   Plus,
   Reply,
   Search,
   Send,
   Smile,
+  Square,
   Trash2,
   Users,
 } from "lucide-react";
@@ -141,7 +145,7 @@ export function ChatWorkspace({ conversationId }: { conversationId?: string | un
       const { data, error } = await supabase
         .from("chat_participants")
         .select(
-          "conversation_id,user_id,is_admin,profiles(id,full_name,avatar_url,status,last_seen_at)",
+          "conversation_id,user_id,is_admin,last_read_at,profiles(id,full_name,avatar_url,status,last_seen_at)",
         )
         .in("conversation_id", conversationIds);
       if (error) throw error;
@@ -313,6 +317,7 @@ function Conversation({
     conversation_id: string;
     user_id: string;
     is_admin: boolean;
+    last_read_at: string;
     profiles: ProfileLite | null;
   }>;
   me: ProfileLite;
@@ -326,6 +331,10 @@ function Conversation({
   const [editing, setEditing] = useState<MessageRow | null>(null);
   const [text, setText] = useState("");
   const [sending, setSending] = useState(false);
+  const [recording, setRecording] = useState(false);
+  const recorderRef = useRef<MediaRecorder | null>(null);
+  const recordingStreamRef = useRef<MediaStream | null>(null);
+  const recordingChunksRef = useRef<Blob[]>([]);
   const {
     data: messages = [],
     isError: messagesError,
@@ -363,27 +372,98 @@ function Conversation({
         { event: "*", schema: "public", table: "chat_reactions" },
         () => void qc.invalidateQueries({ queryKey: ["chat-messages", id] }),
       )
+      .on(
+        "postgres_changes",
+        {
+          event: "UPDATE",
+          schema: "public",
+          table: "chat_participants",
+          filter: `conversation_id=eq.${id}`,
+        },
+        () => void qc.invalidateQueries({ queryKey: ["chat-participants"] }),
+      )
       .subscribe((status) => {
         if (status === "CHANNEL_ERROR" || status === "TIMED_OUT" || status === "CLOSED") {
           void qc.invalidateQueries({ queryKey: ["chat-messages", id] });
           void qc.invalidateQueries({ queryKey: ["chat-conversations", me.id] });
         }
       });
-    void supabase
-      .from("chat_participants")
-      .update({ last_read_at: new Date().toISOString() })
-      .eq("conversation_id", id)
-      .eq("user_id", me.id)
-      .then(({ error }) => {
-        if (error) console.error("Unable to mark chat conversation read", error);
-      });
     return () => {
       void supabase.removeChannel(channel);
     };
   }, [id, me.id, qc]);
+  const latestMessage = messages.at(-1);
+  const latestMessageAt = latestMessage?.created_at;
+  useEffect(() => {
+    if (!latestMessageAt) return;
+    const markRead = () => {
+      if (document.visibilityState !== "visible") return;
+      void supabase
+        .from("chat_participants")
+        .update({ last_read_at: latestMessageAt })
+        .eq("conversation_id", id)
+        .eq("user_id", me.id)
+        .then(({ error }) => {
+          if (error) console.error("Unable to mark chat conversation read", error);
+        });
+    };
+    markRead();
+    document.addEventListener("visibilitychange", markRead);
+    return () => document.removeEventListener("visibilitychange", markRead);
+  }, [id, latestMessageAt, me.id]);
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages.length]);
+  useEffect(
+    () => () => {
+      recorderRef.current?.stop();
+      recordingStreamRef.current?.getTracks().forEach((track) => track.stop());
+    },
+    [],
+  );
+  async function startRecording() {
+    if (!navigator.mediaDevices?.getUserMedia || typeof MediaRecorder === "undefined") {
+      toast.error("Este dispositivo ou navegador não permite gravar áudio.");
+      return;
+    }
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      recordingStreamRef.current = stream;
+      recordingChunksRef.current = [];
+      const mimeType = ["audio/webm;codecs=opus", "audio/mp4", "audio/webm"].find((type) =>
+        MediaRecorder.isTypeSupported(type),
+      );
+      const recorder = new MediaRecorder(stream, mimeType ? { mimeType } : undefined);
+      recorderRef.current = recorder;
+      recorder.ondataavailable = (event) => {
+        if (event.data.size > 0) recordingChunksRef.current.push(event.data);
+      };
+      recorder.onstop = () => {
+        const type = recorder.mimeType || "audio/webm";
+        const extension = type.includes("mp4") ? "m4a" : "webm";
+        const audio = new File(
+          [new Blob(recordingChunksRef.current, { type })],
+          `mensagem-de-voz-${Date.now()}.${extension}`,
+          { type },
+        );
+        setFile(audio);
+        recordingChunksRef.current = [];
+        recordingStreamRef.current?.getTracks().forEach((track) => track.stop());
+        recordingStreamRef.current = null;
+        recorderRef.current = null;
+        setRecording(false);
+      };
+      recorder.start();
+      setRecording(true);
+    } catch (error) {
+      recordingStreamRef.current?.getTracks().forEach((track) => track.stop());
+      recordingStreamRef.current = null;
+      toast.error(error instanceof Error ? error.message : "Não foi possível iniciar a gravação.");
+    }
+  }
+  function stopRecording() {
+    if (recorderRef.current?.state === "recording") recorderRef.current.stop();
+  }
   async function send() {
     if (sending || (!text.trim() && !file)) return;
     setSending(true);
@@ -470,6 +550,13 @@ function Conversation({
                 : "Offline"}
           </p>
         </div>
+        <AudioCallControl
+          conversationId={id}
+          userId={me.id}
+          targets={participants
+            .filter((participant) => participant.user_id !== me.id && participant.profiles)
+            .map((participant) => participant.profiles!)}
+        />
       </header>
       <ScrollArea className="flex-1">
         <div className="mx-auto max-w-3xl space-y-4 p-4 sm:p-6">
@@ -500,6 +587,8 @@ function Conversation({
                 onEdit={() => startEdit(message)}
                 onChanged={() => void qc.invalidateQueries({ queryKey: ["chat-messages", id] })}
                 userId={me.id}
+                readBy={participants.filter((participant) => participant.user_id !== me.id)}
+                isGroup={conversation.chat_conversations?.kind === "group"}
               />
             ))
           )}
@@ -554,9 +643,21 @@ function Conversation({
             <input
               className="sr-only"
               type="file"
+              accept="image/*,audio/*,.pdf,.doc,.docx,.xls,.xlsx,.txt"
               onChange={(e) => setFile(e.target.files?.[0] ?? null)}
             />
           </label>
+          <Button
+            type="button"
+            size="icon"
+            variant={recording ? "destructive" : "ghost"}
+            disabled={sending || !!file}
+            onClick={() => (recording ? stopRecording() : void startRecording())}
+            aria-label={recording ? "Parar gravação" : "Gravar mensagem de voz"}
+            title={recording ? "Parar gravação" : "Gravar mensagem de voz"}
+          >
+            {recording ? <Square /> : <Mic />}
+          </Button>
           <Textarea
             ref={inputRef}
             autoFocus
@@ -593,6 +694,8 @@ function MessageItem({
   onEdit,
   onChanged,
   userId,
+  readBy,
+  isGroup,
 }: {
   message: MessageRow;
   mine: boolean;
@@ -601,6 +704,8 @@ function MessageItem({
   onEdit: () => void;
   onChanged: () => void;
   userId: string;
+  readBy: Array<{ user_id: string; last_read_at: string }>;
+  isGroup: boolean;
 }) {
   const reply = all.find((x) => x.id === message.reply_to_id);
   const grouped = Object.entries(
@@ -676,22 +781,42 @@ function MessageItem({
           <div className="mt-1 flex items-center justify-end gap-1 text-[10px] opacity-65">
             {message.edited_at && <span>editada</span>}
             {mine &&
-              (message.deleted_at ? (
-                <Check className="h-3 w-3" />
-              ) : (
-                <CheckCheck className="h-3 w-3" />
-              ))}
+              (() => {
+                const readers = readBy.filter(
+                  (participant) =>
+                    new Date(participant.last_read_at).getTime() >=
+                    new Date(message.created_at).getTime(),
+                ).length;
+                return message.deleted_at ? (
+                  <Check className="h-3 w-3" />
+                ) : readers > 0 ? (
+                  <span className="flex items-center gap-0.5 text-highlight">
+                    <CheckCheck className="h-3 w-3" />
+                    {isGroup ? `Lido por ${readers}` : "Lido"}
+                  </span>
+                ) : (
+                  <span className="flex items-center gap-0.5">
+                    <Check className="h-3 w-3" />
+                    Enviado
+                  </span>
+                );
+              })()}
           </div>
           {!message.deleted_at && (
             <div
               className={cn(
-                "absolute -top-3 hidden items-center rounded-md border bg-popover p-0.5 text-popover-foreground shadow-sm group-hover:flex",
+                "absolute -top-5 flex items-center rounded-md border bg-popover p-0.5 text-popover-foreground shadow-sm [@media(hover:hover)]:hidden [@media(hover:hover)]:group-hover:flex",
                 mine ? "right-2" : "left-2",
               )}
             >
               <Popover>
                 <PopoverTrigger asChild>
-                  <Button size="icon" variant="ghost" className="h-7 w-7">
+                  <Button
+                    size="icon"
+                    variant="ghost"
+                    className="h-10 w-10 [@media(hover:hover)]:h-7 [@media(hover:hover)]:w-7"
+                    aria-label="Reagir"
+                  >
                     <Smile />
                   </Button>
                 </PopoverTrigger>
@@ -709,12 +834,23 @@ function MessageItem({
                   ))}
                 </PopoverContent>
               </Popover>
-              <Button size="icon" variant="ghost" className="h-7 w-7" onClick={onReply}>
+              <Button
+                size="icon"
+                variant="ghost"
+                className="h-10 w-10 [@media(hover:hover)]:h-7 [@media(hover:hover)]:w-7"
+                onClick={onReply}
+                aria-label="Responder"
+              >
                 <Reply />
               </Button>
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <Button size="icon" variant="ghost" className="h-7 w-7">
+                  <Button
+                    size="icon"
+                    variant="ghost"
+                    className="h-10 w-10 [@media(hover:hover)]:h-7 [@media(hover:hover)]:w-7"
+                    aria-label="Mais opções"
+                  >
                     <MoreVertical />
                   </Button>
                 </DropdownMenuTrigger>
@@ -764,6 +900,46 @@ function MessageItem({
 }
 
 function Attachment({ message }: { message: MessageRow }) {
+  const [signedUrl, setSignedUrl] = useState<string | null>(null);
+  const [audioError, setAudioError] = useState(false);
+  const isAudio = message.attachment_type?.startsWith("audio/");
+  useEffect(() => {
+    if (!isAudio || !message.attachment_path) return;
+    let active = true;
+    setAudioError(false);
+    void supabase.storage
+      .from("chat-files")
+      .createSignedUrl(message.attachment_path, 300)
+      .then(({ data, error }) => {
+        if (error) {
+          if (active) setAudioError(true);
+          console.error("Unable to load chat audio", error);
+          toast.error("Não foi possível carregar o áudio.");
+          return;
+        }
+        if (active) setSignedUrl(data.signedUrl);
+      })
+      .catch((error: unknown) => {
+        if (!active) return;
+        setAudioError(true);
+        console.error("Unable to load chat audio", error);
+        toast.error("Não foi possível carregar o áudio.");
+      });
+    return () => {
+      active = false;
+    };
+  }, [isAudio, message.attachment_path]);
+  if (isAudio) {
+    return signedUrl ? (
+      <audio className="mt-2 max-w-full" controls preload="metadata" src={signedUrl}>
+        Seu navegador não consegue reproduzir este áudio.
+      </audio>
+    ) : (
+      <p className="mt-2 text-xs opacity-70">
+        {audioError ? "Áudio indisponível." : "Carregando áudio..."}
+      </p>
+    );
+  }
   async function open() {
     if (!message.attachment_path) return;
     const { data, error } = await supabase.storage
@@ -786,6 +962,401 @@ function Attachment({ message }: { message: MessageRow }) {
       </span>
       <span className="truncate">{message.attachment_name}</span>
     </button>
+  );
+}
+
+type ChatCallRow = {
+  id: string;
+  conversation_id: string;
+  caller_id: string;
+  callee_id: string;
+  status: string;
+  offer: string;
+  answer: string | null;
+  created_at: string;
+};
+
+function AudioCallControl({
+  conversationId,
+  userId,
+  targets,
+}: {
+  conversationId: string;
+  userId: string;
+  targets: ProfileLite[];
+}) {
+  const [incoming, setIncoming] = useState<ChatCallRow | null>(null);
+  const [callId, setCallId] = useState<string | null>(null);
+  const [callState, setCallState] = useState<"ringing" | "connecting" | "connected" | null>(null);
+  const [caller, setCaller] = useState<ProfileLite | null>(null);
+  const [audioPlaybackBlocked, setAudioPlaybackBlocked] = useState(false);
+  const peerRef = useRef<RTCPeerConnection | null>(null);
+  const localStreamRef = useRef<MediaStream | null>(null);
+  const remoteAudioRef = useRef<HTMLAudioElement>(null);
+  const queryErrorShown = useRef(false);
+
+  function closePeer() {
+    peerRef.current?.close();
+    peerRef.current = null;
+    localStreamRef.current?.getTracks().forEach((track) => track.stop());
+    localStreamRef.current = null;
+    if (remoteAudioRef.current) remoteAudioRef.current.srcObject = null;
+  }
+
+  async function createPeer(): Promise<RTCPeerConnection> {
+    if (!navigator.mediaDevices?.getUserMedia) {
+      throw new Error("Este dispositivo não permite chamadas de áudio neste navegador.");
+    }
+    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    localStreamRef.current = stream;
+    const peer = new RTCPeerConnection({
+      iceServers: [{ urls: "stun:stun.l.google.com:19302" }],
+    });
+    peerRef.current = peer;
+    stream.getTracks().forEach((track) => peer.addTrack(track, stream));
+    peer.ontrack = (event) => {
+      if (remoteAudioRef.current && event.streams[0]) {
+        remoteAudioRef.current.srcObject = event.streams[0];
+        void remoteAudioRef.current.play().catch(() => {
+          setAudioPlaybackBlocked(true);
+        });
+      }
+    };
+    peer.onconnectionstatechange = () => {
+      if (peer.connectionState === "connected") setCallState("connected");
+      if (peer.connectionState === "failed") {
+        toast.error("A chamada não conseguiu conectar. Verifique a rede e tente novamente.");
+      }
+    };
+    return peer;
+  }
+
+  async function gatherIce(peer: RTCPeerConnection) {
+    if (peer.iceGatheringState === "complete") return;
+    await new Promise<void>((resolve, reject) => {
+      const timeout = window.setTimeout(() => {
+        peer.removeEventListener("icegatheringstatechange", onStateChange);
+        reject(new Error("A rede demorou para preparar a chamada. Tente novamente."));
+      }, 25_000);
+      const onStateChange = () => {
+        if (peer.iceGatheringState !== "complete") return;
+        window.clearTimeout(timeout);
+        peer.removeEventListener("icegatheringstatechange", onStateChange);
+        resolve();
+      };
+      peer.addEventListener("icegatheringstatechange", onStateChange);
+      onStateChange();
+    });
+  }
+
+  useEffect(() => {
+    if (callId) return;
+    let active = true;
+    const refreshIncoming = async () => {
+      const { data, error } = await supabase
+        .from("chat_calls")
+        .select("*")
+        .eq("conversation_id", conversationId)
+        .eq("callee_id", userId)
+        .eq("status", "ringing")
+        .gt("created_at", new Date(Date.now() - 60_000).toISOString())
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      if (error) {
+        if (!queryErrorShown.current) {
+          toast.error("Não foi possível verificar chamadas recebidas.");
+          queryErrorShown.current = true;
+        }
+        console.error("Unable to load incoming chat calls", error);
+        return;
+      }
+      queryErrorShown.current = false;
+      if (active) setIncoming(data as ChatCallRow | null);
+    };
+    void refreshIncoming();
+    const interval = window.setInterval(() => void refreshIncoming(), 2_500);
+    const channel = supabase
+      .channel(`chat-calls-${conversationId}-${userId}`)
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "chat_calls",
+          filter: `conversation_id=eq.${conversationId}`,
+        },
+        () => void refreshIncoming(),
+      )
+      .subscribe();
+    return () => {
+      active = false;
+      window.clearInterval(interval);
+      void supabase.removeChannel(channel);
+    };
+  }, [callId, conversationId, userId]);
+
+  useEffect(() => {
+    if (!callId) return;
+    let active = true;
+    const refreshCall = async () => {
+      const { data, error } = await supabase
+        .from("chat_calls")
+        .select("*")
+        .eq("id", callId)
+        .maybeSingle();
+      if (error) {
+        if (!queryErrorShown.current) {
+          toast.error("Não foi possível atualizar o estado da chamada.");
+          queryErrorShown.current = true;
+        }
+        console.error("Unable to refresh chat call", error);
+        return;
+      }
+      queryErrorShown.current = false;
+      if (!active || !data) return;
+      if (
+        data.status === "accepted" &&
+        data.answer &&
+        peerRef.current?.remoteDescription === null
+      ) {
+        try {
+          await peerRef.current.setRemoteDescription({
+            type: "answer",
+            sdp: data.answer,
+          });
+          setCallState("connecting");
+        } catch (error) {
+          toast.error(
+            error instanceof Error ? error.message : "Não foi possível conectar a chamada.",
+          );
+          console.error("Unable to apply chat call answer", error);
+        }
+      } else if (data.status === "ended" || data.status === "declined") {
+        closePeer();
+        setCallId(null);
+        setCallState(null);
+        setCaller(null);
+        setIncoming(null);
+        toast(data.status === "declined" ? "A chamada foi recusada." : "A chamada foi encerrada.");
+      }
+    };
+    void refreshCall();
+    const interval = window.setInterval(() => void refreshCall(), 1_500);
+    const channel = supabase
+      .channel(`chat-call-${callId}`)
+      .on(
+        "postgres_changes",
+        { event: "UPDATE", schema: "public", table: "chat_calls", filter: `id=eq.${callId}` },
+        () => void refreshCall(),
+      )
+      .subscribe();
+    return () => {
+      active = false;
+      window.clearInterval(interval);
+      void supabase.removeChannel(channel);
+    };
+  }, [callId]);
+
+  useEffect(
+    () => () => {
+      closePeer();
+    },
+    [],
+  );
+
+  async function startCall(target: ProfileLite) {
+    if (callId || !target) return;
+    try {
+      setCaller(target);
+      setCallState("connecting");
+      const peer = await createPeer();
+      const offer = await peer.createOffer();
+      await peer.setLocalDescription(offer);
+      await gatherIce(peer);
+      const sdp = peer.localDescription?.sdp;
+      if (!sdp) throw new Error("Não foi possível preparar a chamada.");
+      const { data, error } = await supabase.rpc("start_chat_call", {
+        _callee: target.id,
+        _conversation: conversationId,
+        _offer: sdp,
+      });
+      if (error) throw error;
+      if (!data) throw new Error("O servidor não confirmou o início da chamada.");
+      setCallId(data);
+      setCallState("ringing");
+    } catch (error) {
+      closePeer();
+      setCaller(null);
+      setCallState(null);
+      toast.error(error instanceof Error ? error.message : "Não foi possível iniciar a chamada.");
+    }
+  }
+
+  async function acceptCall() {
+    if (!incoming) return;
+    try {
+      setCaller(targets.find((target) => target.id === incoming.caller_id) ?? null);
+      setCallState("connecting");
+      const peer = await createPeer();
+      await peer.setRemoteDescription({ type: "offer", sdp: incoming.offer });
+      const answer = await peer.createAnswer();
+      await peer.setLocalDescription(answer);
+      await gatherIce(peer);
+      const sdp = peer.localDescription?.sdp;
+      if (!sdp) throw new Error("Não foi possível preparar a resposta da chamada.");
+      const { error } = await supabase.rpc("respond_chat_call", {
+        _action: "accepted",
+        _answer: sdp,
+        _call: incoming.id,
+      });
+      if (error) throw error;
+      setCallId(incoming.id);
+      setCallState("connecting");
+      setIncoming(null);
+    } catch (error) {
+      closePeer();
+      setCaller(null);
+      setCallState(null);
+      toast.error(error instanceof Error ? error.message : "Não foi possível atender a chamada.");
+    }
+  }
+
+  async function declineCall() {
+    if (!incoming) return;
+    const { error } = await supabase.rpc("respond_chat_call", {
+      _action: "declined",
+      _call: incoming.id,
+    });
+    if (error) {
+      toast.error("Não foi possível recusar a chamada.");
+      console.error("Unable to decline chat call", error);
+      return;
+    }
+    setIncoming(null);
+  }
+
+  async function endCall() {
+    if (!callId) return;
+    const { error } = await supabase.rpc("respond_chat_call", {
+      _action: "ended",
+      _call: callId,
+    });
+    if (error) {
+      toast.error("Não foi possível encerrar a chamada para os participantes.");
+      console.error("Unable to end chat call", error);
+      return;
+    }
+    closePeer();
+    setCallId(null);
+    setCallState(null);
+    setCaller(null);
+  }
+
+  const singleTarget = targets.length === 1 ? targets[0] : undefined;
+
+  return (
+    <>
+      {callId ? (
+        <>
+          <span className="max-w-24 truncate text-xs text-muted-foreground" aria-live="polite">
+            {callState === "connected"
+              ? "Em chamada"
+              : callState === "ringing"
+                ? "Chamando..."
+                : "Conectando..."}
+          </span>
+          {audioPlaybackBlocked && (
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => {
+                if (remoteAudioRef.current) {
+                  void remoteAudioRef.current.play().then(
+                    () => setAudioPlaybackBlocked(false),
+                    (error: unknown) => {
+                      console.error("Unable to play remote call audio", error);
+                      toast.error("Não foi possível ativar o áudio da chamada.");
+                    },
+                  );
+                }
+              }}
+            >
+              Ativar áudio
+            </Button>
+          )}
+          <Button
+            type="button"
+            variant="destructive"
+            size="icon"
+            onClick={() => void endCall()}
+            aria-label="Encerrar chamada"
+            title={`Chamada ${callState === "connected" ? "conectada" : callState === "ringing" ? "chamando" : "conectando"}${caller ? ` com ${caller.full_name}` : ""}`}
+          >
+            <PhoneOff />
+          </Button>
+        </>
+      ) : singleTarget ? (
+        <Button
+          type="button"
+          variant="ghost"
+          size="icon"
+          onClick={() => void startCall(singleTarget)}
+          aria-label={`Ligar para ${singleTarget.full_name}`}
+          title={`Ligar para ${singleTarget.full_name}`}
+        >
+          <Phone />
+        </Button>
+      ) : targets.length > 1 ? (
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button type="button" variant="ghost" size="icon" aria-label="Iniciar chamada de áudio">
+              <Phone />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end">
+            {targets.map((target) => (
+              <DropdownMenuItem key={target.id} onClick={() => void startCall(target)}>
+                <Phone />
+                Ligar para {target.full_name}
+              </DropdownMenuItem>
+            ))}
+          </DropdownMenuContent>
+        </DropdownMenu>
+      ) : null}
+      <audio ref={remoteAudioRef} autoPlay playsInline className="sr-only" />
+      <Dialog open={!!incoming && !callId} onOpenChange={(open) => !open && void declineCall()}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Chamada de áudio recebida</DialogTitle>
+            <DialogDescription>
+              {targets.find((target) => target.id === incoming?.caller_id)?.full_name ??
+                "Um participante"}{" "}
+              está ligando.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="flex justify-end gap-2">
+            <Button type="button" variant="outline" onClick={() => void declineCall()}>
+              Recusar
+            </Button>
+            <Button type="button" onClick={() => void acceptCall()}>
+              <Phone className="mr-2 h-4 w-4" />
+              Atender
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+      {callId && (
+        <span className="sr-only" aria-live="polite">
+          {callState === "connected"
+            ? `Chamada conectada com ${caller?.full_name ?? "participante"}`
+            : callState === "ringing"
+              ? `Chamando ${caller?.full_name ?? "participante"}`
+              : "Conectando chamada"}
+        </span>
+      )}
+    </>
   );
 }
 
