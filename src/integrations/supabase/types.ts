@@ -811,7 +811,11 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      can_delete_davs: { Args: { _user_id: string }; Returns: boolean }
+      add_chat_participants: {
+        Args: { _conversation_id: string; _members: string[] }
+        Returns: number
+      }
+      can_delete_davs: { Args: { _user_id: string }; Returns: boolean };
       can_manage_member_position: {
         Args: { _member: string; _position: string }
         Returns: boolean

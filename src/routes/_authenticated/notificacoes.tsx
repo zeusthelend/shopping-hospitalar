@@ -93,14 +93,34 @@ function Page() {
     try {
       const result = await registerPushNotifications(userId);
       if (result.status === "registered") {
-        if (await setPref("dav_push_enabled", true))
-          toast.success("Alertas push ativados neste aparelho.");
+        const davEnabled = await setPref("dav_push_enabled", true);
+        const chatEnabled = await setPref("chat_push_enabled", true);
+        if (davEnabled && chatEnabled) toast.success("Alertas push ativados neste aparelho.");
       } else toast.error(registrationMessage(result.status));
     } catch (error) {
       toast.error(
         error instanceof Error
           ? `Não foi possível ativar os alertas: ${error.message}`
           : "Não foi possível ativar os alertas neste aparelho.",
+      );
+    } finally {
+      setRegistering(false);
+    }
+  }
+  async function enableChatNotifications() {
+    if (!userId || registering) return;
+    setRegistering(true);
+    try {
+      const result = await registerPushNotifications(userId);
+      if (result.status === "registered") {
+        if (await setPref("chat_push_enabled", true))
+          toast.success("Notificações de mensagens ativadas neste aparelho.");
+      } else toast.error(registrationMessage(result.status));
+    } catch (error) {
+      toast.error(
+        error instanceof Error
+          ? `Não foi possível ativar as notificações: ${error.message}`
+          : "Não foi possível ativar as notificações neste aparelho.",
       );
     } finally {
       setRegistering(false);
@@ -129,7 +149,7 @@ function Page() {
           icon={MessageSquare}
           label="Mensagens individuais e de grupo"
           checked={prefs?.chat_push_enabled ?? true}
-          onChange={(v) => setPref("chat_push_enabled", v)}
+          onChange={(v) => (v ? enableChatNotifications() : setPref("chat_push_enabled", false))}
         />
         <Preference
           icon={Volume2}

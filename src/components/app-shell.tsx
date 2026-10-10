@@ -28,8 +28,9 @@ import { cn } from "@/lib/utils";
 import { useServerFn } from "@tanstack/react-start";
 import { checkOverdueDavPushes } from "@/lib/push-notifications.functions";
 import {
+  listenForForegroundPush,
   listenForNativePushNavigation,
-  refreshNativePushToken,
+  refreshPushToken,
 } from "@/lib/push-notifications";
 
 const NAV = [
@@ -88,10 +89,11 @@ export function AppShell({ children }: { children: ReactNode }) {
 
   useEffect(() => setDark(document.documentElement.classList.contains("dark")), []);
   useEffect(() => listenForNativePushNavigation(), []);
+  useEffect(() => listenForForegroundPush(), []);
   useEffect(() => {
     if (!me?.profile?.id || !me.profile.approved) return;
-    void refreshNativePushToken(me.profile.id).catch((error: unknown) =>
-      console.error("Native push token refresh failed", error),
+    void refreshPushToken(me.profile.id).catch((error: unknown) =>
+      console.error("Push token refresh failed", error),
     );
   }, [me?.profile?.approved, me?.profile?.id]);
   useEffect(() => {
@@ -257,7 +259,10 @@ export function AppShell({ children }: { children: ReactNode }) {
         <Logo light />
       </div>
       <div className="flex-1 overflow-y-auto">
-        <NavList isAdmin={!!me?.isAdmin || !!me?.roles.includes("gerente")} onNavigate={onNavigate} />
+        <NavList
+          isAdmin={!!me?.isAdmin || !!me?.roles.includes("gerente")}
+          onNavigate={onNavigate}
+        />
       </div>
       {userCard}
     </div>
@@ -341,7 +346,10 @@ function PinGate({ onDone }: { onDone: () => void }) {
     onDone();
   }
   return (
-    <form onSubmit={submit} className="mx-auto mt-16 max-w-sm space-y-4 rounded-xl border bg-card p-6 shadow-card">
+    <form
+      onSubmit={submit}
+      className="mx-auto mt-16 max-w-sm space-y-4 rounded-xl border bg-card p-6 shadow-card"
+    >
       <h1 className="text-lg font-bold">Acesso pendente</h1>
       <p className="text-sm text-muted-foreground">
         Digite o PIN de acesso fornecido por um administrador ou gerente.
