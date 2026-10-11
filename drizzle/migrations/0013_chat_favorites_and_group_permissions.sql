@@ -24,6 +24,9 @@ AS $$
           FROM public.positions po
           WHERE po.id = p.position_id
             AND lower(trim(po.name)) IN (
+              'administrador',
+              'gerente',
+              'gerência',
               'encarregado de estoque',
               'encarregado'
             )
@@ -169,6 +172,11 @@ CREATE TABLE public.chat_message_favorites (
 GRANT SELECT, INSERT, DELETE ON public.chat_message_favorites TO authenticated;
 GRANT ALL ON public.chat_message_favorites TO service_role;
 ALTER TABLE public.chat_message_favorites ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "approved users only message favorites"
+  ON public.chat_message_favorites AS RESTRICTIVE FOR ALL TO authenticated
+  USING (public.is_approved_user())
+  WITH CHECK (public.is_approved_user());
 
 CREATE POLICY "users read own accessible message favorites"
   ON public.chat_message_favorites FOR SELECT TO authenticated
