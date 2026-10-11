@@ -66,9 +66,33 @@ export type Database = {
         Relationships: []
       }
       announcements: {
-        Row: { author_id: string | null; body: string; created_at: string; id: string; important: boolean; title: string; banner_url: string | null }
-        Insert: { author_id?: string | null; body?: string; created_at?: string; id?: string; important?: boolean; title: string; banner_url?: string | null }
-        Update: { author_id?: string | null; body?: string; created_at?: string; id?: string; important?: boolean; title?: string; banner_url?: string | null }
+        Row: {
+          author_id: string | null
+          banner_url: string | null
+          body: string
+          created_at: string
+          id: string
+          important: boolean
+          title: string
+        }
+        Insert: {
+          author_id?: string | null
+          banner_url?: string | null
+          body?: string
+          created_at?: string
+          id?: string
+          important?: boolean
+          title: string
+        }
+        Update: {
+          author_id?: string | null
+          banner_url?: string | null
+          body?: string
+          created_at?: string
+          id?: string
+          important?: boolean
+          title?: string
+        }
         Relationships: []
       }
       app_settings: {
@@ -828,6 +852,10 @@ export type Database = {
         Returns: number
       }
       can_delete_davs: { Args: { _user_id: string }; Returns: boolean }
+      can_manage_announcements: {
+        Args: { _user_id?: string }
+        Returns: boolean
+      }
       can_manage_chat_groups: { Args: { _user_id: string }; Returns: boolean }
       can_manage_member_position: {
         Args: { _member: string; _position: string }
