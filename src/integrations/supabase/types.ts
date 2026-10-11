@@ -66,30 +66,9 @@ export type Database = {
         Relationships: []
       }
       announcements: {
-        Row: {
-          author_id: string | null
-          body: string
-          created_at: string
-          id: string
-          important: boolean
-          title: string
-        }
-        Insert: {
-          author_id?: string | null
-          body?: string
-          created_at?: string
-          id?: string
-          important?: boolean
-          title: string
-        }
-        Update: {
-          author_id?: string | null
-          body?: string
-          created_at?: string
-          id?: string
-          important?: boolean
-          title?: string
-        }
+        Row: { author_id: string | null; body: string; created_at: string; id: string; important: boolean; title: string; banner_url: string | null }
+        Insert: { author_id?: string | null; body?: string; created_at?: string; id?: string; important?: boolean; title: string; banner_url?: string | null }
+        Update: { author_id?: string | null; body?: string; created_at?: string; id?: string; important?: boolean; title?: string; banner_url?: string | null }
         Relationships: []
       }
       app_settings: {
