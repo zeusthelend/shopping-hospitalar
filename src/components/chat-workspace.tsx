@@ -961,7 +961,7 @@ function MessageItem({
                   <Button
                     size="icon"
                     variant="ghost"
-                    className="h-8 w-8 [@media(hover:hover)]:h-7 [@media(hover:hover)]:w-7 [&_svg]:h-4 [&_svg]:w-4"
+                    className="h-7 w-7 rounded-md opacity-80 transition-opacity hover:opacity-100 focus-visible:opacity-100 [&_svg]:h-3.5 [&_svg]:w-3.5"
                     aria-label="Reagir"
                   >
                     <Smile />
@@ -984,7 +984,7 @@ function MessageItem({
               <Button
                 size="icon"
                 variant="ghost"
-                className="h-8 w-8 [@media(hover:hover)]:h-7 [@media(hover:hover)]:w-7 [&_svg]:h-4 [&_svg]:w-4"
+                className="h-7 w-7 rounded-md opacity-80 transition-opacity hover:opacity-100 focus-visible:opacity-100 [&_svg]:h-3.5 [&_svg]:w-3.5"
                 onClick={onReply}
                 aria-label="Responder"
               >
@@ -995,7 +995,7 @@ function MessageItem({
                   <Button
                     size="icon"
                     variant="ghost"
-                    className="h-8 w-8 [@media(hover:hover)]:h-7 [@media(hover:hover)]:w-7 [&_svg]:h-4 [&_svg]:w-4"
+                    className="h-7 w-7 rounded-md opacity-80 transition-opacity hover:opacity-100 focus-visible:opacity-100 [&_svg]:h-3.5 [&_svg]:w-3.5"
                     aria-label="Mais opções"
                   >
                     <MoreVertical />
