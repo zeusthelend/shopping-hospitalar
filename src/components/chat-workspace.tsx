@@ -353,6 +353,7 @@ function Conversation({
   participants,
   profiles,
   me,
+  canManageGroups,
 }: {
   conversation: ConversationRow;
   title: string;
@@ -365,6 +366,7 @@ function Conversation({
   }>;
   profiles: ProfileLite[];
   me: ProfileLite;
+  canManageGroups: boolean;
 }) {
   const id = conversation.conversation_id;
   const qc = useQueryClient();
@@ -436,6 +438,16 @@ function Conversation({
       void supabase.removeChannel(channel);
     };
   }, [id, me.id, qc]);
+  const { data: favoriteMessageIds = [] } = useQuery({
+    queryKey: ["chat-message-favorite-ids", me.id],
+    queryFn: async () => {
+      const { data, error } = await supabase.from("chat_message_favorites").select("message_id").eq("user_id", me.id);
+      if (error) throw error;
+      return (data ?? []).map((row) => row.message_id as string);
+    },
+    enabled: !!me.id,
+    refetchInterval: 15_000,
+  });
   const latestMessage = messages.at(-1);
   const latestMessageAt = latestMessage?.created_at;
   useEffect(() => {
@@ -611,13 +623,16 @@ function Conversation({
             .filter((participant) => participant.user_id !== me.id && participant.profiles)
             .map((participant) => participant.profiles!)}
         />
-        {conversation.chat_conversations?.kind === "group" && conversation.is_admin && (
+        {conversation.chat_conversations?.kind === "group" && canManageGroups && (
           <AddGroupMembersDialog
             conversationId={id}
             profiles={profiles.filter(
               (profile) => !participants.some((participant) => participant.user_id === profile.id),
             )}
           />
+        )}
+        {conversation.chat_conversations?.kind === "group" && canManageGroups && (
+          <ManageGroupMembersDialog conversationId={id} participants={participants} userId={me.id} />
         )}
       </header>
       <ScrollArea className="flex-1">
@@ -647,7 +662,12 @@ function Conversation({
                   inputRef.current?.focus();
                 }}
                 onEdit={() => startEdit(message)}
-                onChanged={() => void qc.invalidateQueries({ queryKey: ["chat-messages", id] })}
+                onChanged={() => {
+                  void qc.invalidateQueries({ queryKey: ["chat-messages", id] });
+                  void qc.invalidateQueries({ queryKey: ["chat-message-favorite-ids", me.id] });
+                  void qc.invalidateQueries({ queryKey: ["chat-message-favorites", me.id] });
+                }}
+                favorite={favoriteMessageIds.includes(message.id)}
                 userId={me.id}
                 readBy={participants.filter((participant) => participant.user_id !== me.id)}
                 isGroup={conversation.chat_conversations?.kind === "group"}
@@ -755,6 +775,7 @@ function MessageItem({
   onReply,
   onEdit,
   onChanged,
+  favorite,
   userId,
   readBy,
   isGroup,
@@ -765,6 +786,7 @@ function MessageItem({
   onReply: () => void;
   onEdit: () => void;
   onChanged: () => void;
+  favorite: boolean;
   userId: string;
   readBy: Array<{ user_id: string; last_read_at: string }>;
   isGroup: boolean;
@@ -786,6 +808,16 @@ function MessageItem({
       : await query.insert({ message_id: message.id, user_id: userId, emoji });
     if (error) toast.error("Não foi possível registrar a reação.");
     else onChanged();
+  }
+  async function toggleFavorite() {
+    const { error } = favorite
+      ? await supabase.from("chat_message_favorites").delete().eq("user_id", userId).eq("message_id", message.id)
+      : await supabase.from("chat_message_favorites").insert({ user_id: userId, message_id: message.id });
+    if (error) toast.error(favorite ? "Não foi possível remover dos favoritos." : "Não foi possível favoritar a mensagem.");
+    else {
+      toast.success(favorite ? "Mensagem removida dos favoritos." : "Mensagem favoritada.");
+      onChanged();
+    }
   }
   async function remove() {
     const { error } = await supabase
@@ -917,6 +949,10 @@ function MessageItem({
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align={mine ? "end" : "start"}>
+                  <DropdownMenuItem onClick={() => void toggleFavorite()}>
+                    {favorite ? <BookmarkCheck /> : <Bookmark />}
+                    {favorite ? "Remover dos favoritos" : "Favoritar mensagem"}
+                  </DropdownMenuItem>
                   <DropdownMenuItem
                     onClick={() => void navigator.clipboard.writeText(message.body)}
                   >
