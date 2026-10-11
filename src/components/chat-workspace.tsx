@@ -1728,7 +1728,7 @@ function ManageGroupMembersDialog({
         <DialogHeader>
           <DialogTitle>Gerenciar participantes</DialogTitle>
           <DialogDescription>
-            Somente Administrador, Gerência ou Encarregado de Estoque pode remover outras pessoas do grupo.
+            Somente Administrador, Gerência ou Encarregado pode remover outras pessoas do grupo.
           </DialogDescription>
         </DialogHeader>
         <ScrollArea className="max-h-[60vh] pr-3">
