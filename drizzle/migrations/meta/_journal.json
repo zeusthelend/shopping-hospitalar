@@ -99,6 +99,13 @@
       "when": 1791570000000,
       "tag": "0013_chat_favorites_and_group_permissions",
       "breakpoints": true
+    },
+    {
+      "idx": 14,
+      "version": "7",
+      "when": 1791600000000,
+      "tag": "0014_group_avatar_storage",
+      "breakpoints": true
     }
   ]
 }

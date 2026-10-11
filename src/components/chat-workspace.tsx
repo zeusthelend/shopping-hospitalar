@@ -7,6 +7,7 @@ import {
   BookmarkCheck,
   Check,
   CheckCheck,
+  Camera,
   Copy,
   FileText,
   Image,
@@ -616,7 +617,8 @@ function Conversation({
           </Link>
         </Button>
         <Avatar className="h-9 w-9">
-          <AvatarFallback>{initials(title)}</AvatarFallback>
+          <AvatarImage src={conversation.chat_conversations?.kind === "group" ? (conversation.chat_conversations.image_url ?? undefined) : (participants.find((p) => p.user_id !== me.id)?.profiles?.avatar_url ?? undefined)} alt={title} />
+          <AvatarFallback>{conversation.chat_conversations?.kind === "group" ? <Users className="h-4 w-4" /> : initials(title)}</AvatarFallback>
         </Avatar>
         <div className="min-w-0 flex-1">
           <h2 className="truncate font-bold">{title}</h2>
@@ -635,6 +637,9 @@ function Conversation({
             .filter((participant) => participant.user_id !== me.id && participant.profiles)
             .map((participant) => participant.profiles!)}
         />
+        {conversation.chat_conversations?.kind === "group" && canManageGroups && (
+          <GroupAvatarDialog conversationId={id} imageUrl={conversation.chat_conversations.image_url} onUpdated={() => { void qc.invalidateQueries({ queryKey: ["chat-conversations"] }); }} />
+        )}
         {conversation.chat_conversations?.kind === "group" && canManageGroups && (
           <AddGroupMembersDialog
             conversationId={id}
@@ -1938,6 +1943,38 @@ function AddGroupMembersDialog({
       </DialogContent>
     </Dialog>
   );
+}
+
+function GroupAvatarDialog({ conversationId, imageUrl, onUpdated }: { conversationId: string; imageUrl: string | null; onUpdated: () => void }) {
+  const [open, setOpen] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const fileRef = useRef<HTMLInputElement>(null);
+  async function savePhoto(file: File) {
+    if (!file.type.startsWith("image/")) { toast.error("Selecione um arquivo de imagem."); return; }
+    if (file.size > 5 * 1024 * 1024) { toast.error("A imagem deve ter no máximo 5 MB."); return; }
+    setBusy(true);
+    try {
+      const ext = file.name.split(".").pop()?.toLowerCase().replace(/[^a-z0-9]/g, "") || "jpg";
+      const path = conversationId + "/" + crypto.randomUUID() + "." + ext;
+      const { error: uploadError } = await supabase.storage.from("group-avatars").upload(path, file, { upsert: false, contentType: file.type });
+      if (uploadError) throw uploadError;
+      const publicUrl = supabase.storage.from("group-avatars").getPublicUrl(path).data.publicUrl;
+      const { error: updateError } = await supabase.from("chat_conversations").update({ image_url: publicUrl }).eq("id", conversationId).eq("kind", "group");
+      if (updateError) { await supabase.storage.from("group-avatars").remove([path]); throw updateError; }
+      toast.success("Foto do grupo atualizada."); setOpen(false); onUpdated();
+    } catch (error) { toast.error(error instanceof Error ? error.message : "Não foi possível atualizar a foto do grupo."); }
+    finally { setBusy(false); if (fileRef.current) fileRef.current.value = ""; }
+  }
+  async function removePhoto() {
+    setBusy(true);
+    try {
+      const { error } = await supabase.from("chat_conversations").update({ image_url: null }).eq("id", conversationId).eq("kind", "group");
+      if (error) throw error;
+      toast.success("Foto do grupo removida."); setOpen(false); onUpdated();
+    } catch (error) { toast.error(error instanceof Error ? error.message : "Não foi possível remover a foto."); }
+    finally { setBusy(false); }
+  }
+  return <Dialog open={open} onOpenChange={setOpen}><DialogTrigger asChild><Button variant="outline" size="icon" aria-label="Alterar foto do grupo" title="Foto do grupo"><Camera className="h-4 w-4" /></Button></DialogTrigger><DialogContent><DialogHeader><DialogTitle>Foto do grupo</DialogTitle><DialogDescription>Escolha uma imagem para identificar este grupo. Ela ficará visível para os participantes.</DialogDescription></DialogHeader><div className="flex flex-col items-center gap-4"><Avatar className="h-24 w-24"><AvatarImage src={imageUrl ?? undefined} alt="Foto atual do grupo" /><AvatarFallback><Users className="h-8 w-8" /></AvatarFallback></Avatar><input ref={fileRef} type="file" accept="image/*" className="w-full text-sm" disabled={busy} aria-label="Selecionar foto do grupo" onChange={(event) => { const file = event.currentTarget.files?.[0]; if (file) void savePhoto(file); }} /><p className="text-xs text-muted-foreground">Imagem de até 5 MB.</p>{imageUrl && <Button variant="outline" className="w-full" disabled={busy} onClick={() => void removePhoto()}>Remover foto</Button>}</div></DialogContent></Dialog>;
 }
 
 function conversationTitle(
