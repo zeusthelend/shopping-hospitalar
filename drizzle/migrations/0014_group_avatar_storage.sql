@@ -12,7 +12,8 @@ ON storage.objects FOR INSERT TO authenticated
 WITH CHECK (
   bucket_id = 'group-avatars'
   AND public.is_approved_user()
-  AND public.is_chat_admin(((storage.foldername(name))[1])::uuid, auth.uid())
+  AND public.can_manage_chat_groups(auth.uid())
+  AND public.is_chat_member(((storage.foldername(name))[1])::uuid, auth.uid())
 );
 
 DROP POLICY IF EXISTS "approved group admins delete group avatars" ON storage.objects;
