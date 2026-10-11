@@ -3,6 +3,8 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useRef, useState } from "react";
 import {
   ArrowLeft,
+  Bookmark,
+  BookmarkCheck,
   Check,
   CheckCheck,
   Copy,
@@ -22,6 +24,7 @@ import {
   Smile,
   Square,
   Trash2,
+  UserMinus,
   UserPlus,
   Users,
 } from "lucide-react";
@@ -91,6 +94,19 @@ type MessageRow = {
   created_at: string;
   profiles: ProfileLite | null;
   chat_reactions: Array<{ emoji: string; user_id: string }>;
+};
+type FavoriteMessageRow = {
+  message_id: string;
+  created_at: string;
+  chat_messages: {
+    id: string;
+    conversation_id: string;
+    body: string;
+    created_at: string;
+    deleted_at: string | null;
+    profiles: { full_name: string } | null;
+    chat_conversations: { name: string | null; kind: string } | null;
+  } | null;
 };
 const REACTIONS = ["👍", "❤️", "😂", "😮", "😢", "🙏"];
 
@@ -177,6 +193,26 @@ export function ChatWorkspace({ conversationId }: { conversationId?: string | un
     };
   }, [qc]);
   const active = memberships.find((x) => x.conversation_id === conversationId);
+  const { data: canManageGroups = false } = useQuery({
+    queryKey: ["chat-group-management-permission", me?.profile?.id],
+    enabled: !!me?.profile?.id,
+    queryFn: async () => {
+      const userId = me?.profile?.id;
+      if (!userId) return false;
+      const [{ data: roles, error: rolesError }, { data: profile, error: profileError }] = await Promise.all([
+        supabase.from("user_roles").select("role").eq("user_id", userId),
+        supabase.from("profiles").select("position_id,active,approved").eq("id", userId).maybeSingle(),
+      ]);
+      if (rolesError) throw rolesError;
+      if (profileError) throw profileError;
+      if (!profile?.active || !profile.approved) return false;
+      if ((roles ?? []).some((row) => row.role === "admin" || row.role === "gerente")) return true;
+      if (!profile.position_id) return false;
+      const { data: position, error: positionError } = await supabase.from("positions").select("name").eq("id", profile.position_id).maybeSingle();
+      if (positionError) throw positionError;
+      return ["encarregado de estoque", "encarregado"].includes((position?.name ?? "").trim().toLocaleLowerCase("pt-BR"));
+    },
+  });
   return (
     <div className="overflow-hidden rounded-lg border bg-card shadow-card lg:grid lg:h-[calc(100vh-7.5rem)] lg:grid-cols-[320px_minmax(0,1fr)]">
       <aside className={cn("border-r", conversationId && "hidden lg:block")}>
@@ -185,10 +221,13 @@ export function ChatWorkspace({ conversationId }: { conversationId?: string | un
             <h1 className="font-bold">Chat</h1>
             <p className="text-xs text-muted-foreground">{memberships.length} conversas</p>
           </div>
-          <NewConversationDialog
+          <div className="flex items-center gap-2">
+            <FavoriteMessagesDialog userId={me?.profile?.id} />
+            <NewConversationDialog
             profiles={profiles.filter((p) => p.id !== me?.profile?.id)}
             userId={me?.profile?.id}
-          />
+            />
+          </div>
         </div>
         <div className="p-3">
           <div className="relative">
@@ -266,6 +305,7 @@ export function ChatWorkspace({ conversationId }: { conversationId?: string | un
             participants={allParticipants.filter((p) => p.conversation_id === conversationId)}
             profiles={profiles.filter((profile) => profile.id !== me.profile.id)}
             me={me.profile}
+            canManageGroups={canManageGroups}
           />
         ) : conversationId && membershipsError ? (
           <div className="grid h-full place-items-center p-8 text-center">
