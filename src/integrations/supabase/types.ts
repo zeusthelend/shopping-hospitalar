@@ -228,6 +228,39 @@ export type Database = {
         }
         Relationships: []
       }
+      chat_message_favorites: {
+        Row: {
+          created_at: string
+          message_id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          message_id: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          message_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "chat_message_favorites_message_id_fkey"
+            columns: ["message_id"]
+            isOneToOne: false
+            referencedRelation: "chat_messages"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "chat_message_favorites_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       chat_messages: {
         Row: {
           attachment_name: string | null
