@@ -38,8 +38,8 @@ function MinhasVendas() {
     else if (period === "week") { start.setDate(start.getDate() - 6); start.setHours(0,0,0,0); }
     else if (period === "month") { start.setDate(1); start.setHours(0,0,0,0); }
     return {
-      start: period === "custom" ? (from ? new Date(from + "T00:00:00").toISOString() : null) : start.toISOString(),
-      end: period === "custom" ? (to ? new Date(to + "T23:59:59").toISOString() : null) : now.toISOString(),
+      start: period === "all" ? null : period === "custom" ? (from ? new Date(from + "T00:00:00").toISOString() : null) : start.toISOString(),
+      end: period === "custom" ? (to ? new Date(to + "T23:59:59").toISOString() : null) : period === "all" ? null : now.toISOString(),
     };
   }, [period, from, to]);
 
@@ -64,6 +64,11 @@ function MinhasVendas() {
   const completed = filtered.filter(d => d.status === "concluido");
   const average = filtered.length ? total / filtered.length : 0;
 
+  function exportPdf() {
+    // Opens the browser print dialog; the user can choose “Salvar como PDF”.
+    window.print();
+  }
+
   function exportCsv() {
     const rows = [["DAV", "Data", "Cliente", "Status", "Valor (R$)"], ...filtered.map(d => [
       d.dav_number, new Date(d.due_at).toLocaleDateString("pt-BR"), d.client_name, d.status, Number(d.dav_value ?? 0).toFixed(2).replace(".", ",")
@@ -74,8 +79,9 @@ function MinhasVendas() {
   }
 
   return <>
-    <PageHeader title={isManager ? "Acompanhamento de Vendas" : "Minhas Vendas"} subtitle="Acompanhe DAVs, valores e evolução das vendas." action={<Button onClick={exportCsv}><Download className="mr-2 h-4 w-4"/>Exportar planilha</Button>} />
-    <div className="mb-5 grid gap-3 rounded-xl border bg-card p-4 sm:grid-cols-2 lg:grid-cols-4">
+    <div className="print:hidden"><PageHeader title={isManager ? "Acompanhamento de Vendas" : "Minhas Vendas"} subtitle="Acompanhe DAVs, valores e evolução das vendas." action={<div className="flex flex-wrap gap-2"><Button variant="outline" onClick={exportPdf}><Download className="mr-2 h-4 w-4"/>Exportar PDF</Button><Button onClick={exportCsv}><Download className="mr-2 h-4 w-4"/>Exportar planilha</Button></div>} /></div>
+    <div className="hidden print:block mb-6"><h1 className="text-2xl font-bold">Relatório de Histórico de DAVs</h1><p>{isManager ? "Acompanhamento de Vendas — visão gerencial" : "Minhas Vendas"}</p><p>Emitido em {new Date().toLocaleString("pt-BR")}</p></div>
+    <div className="print:hidden mb-5 grid gap-3 rounded-xl border bg-card p-4 sm:grid-cols-2 lg:grid-cols-4">
       <div><label className="mb-1 block text-xs text-muted-foreground">Período</label><Select value={period} onValueChange={setPeriod}><SelectTrigger><SelectValue/></SelectTrigger><SelectContent><SelectItem value="today">Hoje</SelectItem><SelectItem value="week">Últimos 7 dias</SelectItem><SelectItem value="month">Este mês</SelectItem><SelectItem value="all">Todo o período</SelectItem><SelectItem value="custom">Personalizado</SelectItem></SelectContent></Select></div>
       {period === "custom" && <><div><label className="mb-1 block text-xs text-muted-foreground">De</label><Input type="date" value={from} onChange={e=>setFrom(e.target.value)}/></div><div><label className="mb-1 block text-xs text-muted-foreground">Até</label><Input type="date" value={to} onChange={e=>setTo(e.target.value)}/></div></>}
       <div><label className="mb-1 block text-xs text-muted-foreground">Buscar DAV ou cliente</label><Input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Digite para filtrar"/></div>
