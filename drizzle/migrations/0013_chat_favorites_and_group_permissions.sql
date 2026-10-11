@@ -6,7 +6,7 @@ STABLE
 SECURITY DEFINER
 SET search_path = public
 AS $$
-  SELECT EXISTS (
+  SELECT _user_id = auth.uid() AND EXISTS (
     SELECT 1
     FROM public.profiles p
     WHERE p.id = _user_id
@@ -39,10 +39,21 @@ GRANT EXECUTE ON FUNCTION public.can_manage_chat_groups(uuid) TO authenticated;
 
 -- Replace the old group-admin-only rules so being a group creator alone
 -- does not grant permission to administer other members or group metadata.
+-- Remove both the original names and the replacement names introduced by
+-- 0005_chat_presence_policy.sql. RLS permissive policies are OR-combined.
 DROP POLICY IF EXISTS "admins update chat conversations" ON public.chat_conversations;
+DROP POLICY IF EXISTS "approved admins update chat conversations" ON public.chat_conversations;
 DROP POLICY IF EXISTS "admins delete chat conversations" ON public.chat_conversations;
+DROP POLICY IF EXISTS "approved admins delete chat conversations" ON public.chat_conversations;
 DROP POLICY IF EXISTS "admins add chat participants" ON public.chat_participants;
+DROP POLICY IF EXISTS "approved admins add chat participants" ON public.chat_participants;
 DROP POLICY IF EXISTS "admins remove chat participants" ON public.chat_participants;
+DROP POLICY IF EXISTS "approved members remove chat participants" ON public.chat_participants;
+DROP POLICY IF EXISTS "members leave own chat" ON public.chat_participants;
+DROP POLICY IF EXISTS "authorized staff update group conversations" ON public.chat_conversations;
+DROP POLICY IF EXISTS "authorized staff delete group conversations" ON public.chat_conversations;
+DROP POLICY IF EXISTS "authorized staff add group participants" ON public.chat_participants;
+DROP POLICY IF EXISTS "authorized staff remove group participants" ON public.chat_participants;
 
 CREATE POLICY "authorized staff update group conversations"
   ON public.chat_conversations FOR UPDATE TO authenticated
@@ -111,7 +122,7 @@ BEGIN
     OR NOT public.is_approved_user()
     OR NOT public.can_manage_chat_groups(auth.uid())
     OR NOT public.is_chat_member(_conversation_id, auth.uid()) THEN
-    RAISE EXCEPTION 'Apenas Administrador, Gerência ou Encarregado de Estoque pode adicionar pessoas ao grupo';
+    RAISE EXCEPTION 'Apenas Administrador, Gerência ou Encarregado pode adicionar pessoas ao grupo';
   END IF;
 
   IF NOT EXISTS (
