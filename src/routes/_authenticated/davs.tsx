@@ -292,6 +292,7 @@ function DavDialog({
           client_name: client.slice(0, 180),
           description: String(fd.get("description")).trim().slice(0, 2000),
           seller_id: seller,
+          dav_value: fd.get("value") === "" ? null : Number(fd.get("value")),
           due_at: new Date(due).toISOString(),
           created_by: userId,
         })
@@ -352,6 +353,7 @@ function DavDialog({
               <Input name="due_at" type="datetime-local" required />
             </Field>
           </div>
+          <Field label="Valor da DAV (R$)"><Input name="value" type="number" min="0" step="0.01" inputMode="decimal" placeholder="0,00" /></Field>
           <Field label="Cliente ou empresa">
             <Input name="client" required maxLength={180} />
           </Field>
