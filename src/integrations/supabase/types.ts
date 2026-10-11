@@ -68,6 +68,7 @@ export type Database = {
       announcements: {
         Row: {
           author_id: string | null
+          banner_url: string | null
           body: string
           created_at: string
           id: string
@@ -76,6 +77,7 @@ export type Database = {
         }
         Insert: {
           author_id?: string | null
+          banner_url?: string | null
           body?: string
           created_at?: string
           id?: string
@@ -84,6 +86,7 @@ export type Database = {
         }
         Update: {
           author_id?: string | null
+          banner_url?: string | null
           body?: string
           created_at?: string
           id?: string
@@ -849,6 +852,10 @@ export type Database = {
         Returns: number
       }
       can_delete_davs: { Args: { _user_id: string }; Returns: boolean }
+      can_manage_announcements: {
+        Args: { _user_id?: string }
+        Returns: boolean
+      }
       can_manage_chat_groups: { Args: { _user_id: string }; Returns: boolean }
       can_manage_member_position: {
         Args: { _member: string; _position: string }
