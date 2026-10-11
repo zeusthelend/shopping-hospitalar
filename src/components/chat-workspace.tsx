@@ -808,6 +808,7 @@ function MessageItem({
   readBy: Array<{ user_id: string; last_read_at: string }>;
   isGroup: boolean;
 }) {
+  const [profileOpen, setProfileOpen] = useState(false);
   const reply = all.find((x) => x.id === message.reply_to_id);
   const grouped = Object.entries(
     message.chat_reactions.reduce<Record<string, string[]>>((acc, r) => {
@@ -861,7 +862,42 @@ function MessageItem({
           )}
         >
           <div className="mb-1 flex items-center gap-2 text-[11px] opacity-70">
-            <strong>{mine ? "Você" : (message.profiles?.full_name ?? "Colaborador")}</strong>
+            <Dialog open={profileOpen} onOpenChange={setProfileOpen}>
+              <DialogTrigger asChild>
+                <button
+                  type="button"
+                  className="max-w-[180px] truncate text-left font-bold underline-offset-2 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                  aria-label={`Ver perfil de ${message.profiles?.full_name ?? "Colaborador"}`}
+                >
+                  {mine ? "Você" : (message.profiles?.full_name ?? "Colaborador")}
+                </button>
+              </DialogTrigger>
+              {message.profiles && (
+                <DialogContent className="sm:max-w-sm">
+                  <DialogHeader>
+                    <DialogTitle>Perfil do colaborador</DialogTitle>
+                    <DialogDescription>Informações disponíveis no Shopping Hospitalar.</DialogDescription>
+                  </DialogHeader>
+                  <div className="flex flex-col items-center gap-3 py-2 text-center">
+                    <Avatar className="h-20 w-20">
+                      <AvatarImage src={message.profiles.avatar_url ?? undefined} alt={message.profiles.full_name} />
+                      <AvatarFallback>{initials(message.profiles.full_name)}</AvatarFallback>
+                    </Avatar>
+                    <div>
+                      <p className="font-semibold">{message.profiles.full_name}</p>
+                      <p className="mt-1 text-sm text-muted-foreground">
+                        {livePresence(message.profiles) === "online" ? "Online" : "Offline"}
+                      </p>
+                      {message.profiles.last_seen_at && livePresence(message.profiles) !== "online" && (
+                        <p className="mt-1 text-xs text-muted-foreground">
+                          Visto por último em {new Date(message.profiles.last_seen_at).toLocaleString("pt-BR")}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                </DialogContent>
+              )}
+            </Dialog>
             <time>
               {new Date(message.created_at).toLocaleTimeString("pt-BR", {
                 hour: "2-digit",
