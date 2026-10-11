@@ -1438,24 +1438,81 @@ function AudioCallControl({
         </DropdownMenu>
       ) : null}
       <audio ref={remoteAudioRef} autoPlay playsInline className="sr-only" />
+      <Dialog open={!!callId} onOpenChange={(open) => !open && void endCall()}>
+        <DialogContent className="sm:max-w-sm">
+          <div className="flex flex-col items-center py-5 text-center">
+            <Avatar className="mb-5 h-28 w-28 ring-4 ring-primary/15">
+              <AvatarImage src={caller?.avatar_url ?? undefined} alt={caller?.full_name ?? "Foto do contato"} />
+              <AvatarFallback className="text-3xl">{initials(caller?.full_name ?? "Contato")}</AvatarFallback>
+            </Avatar>
+            <DialogHeader className="items-center">
+              <DialogTitle className="text-xl">{caller?.full_name ?? "Chamada de áudio"}</DialogTitle>
+              <DialogDescription>
+                {callState === "connected"
+                  ? "Em chamada"
+                  : callState === "ringing"
+                    ? "Chamando..."
+                    : "Conectando..."}
+              </DialogDescription>
+            </DialogHeader>
+            {audioPlaybackBlocked && (
+              <Button className="mt-5" variant="outline" onClick={() => {
+                if (remoteAudioRef.current) {
+                  void remoteAudioRef.current.play().then(
+                    () => setAudioPlaybackBlocked(false),
+                    () => toast.error("Não foi possível ativar o áudio da chamada."),
+                  );
+                }
+              }}>
+                Ativar áudio
+              </Button>
+            )}
+            <Button
+              type="button"
+              variant="destructive"
+              size="lg"
+              className="mt-8 h-14 w-14 rounded-full"
+              onClick={() => void endCall()}
+              aria-label="Encerrar chamada"
+              title="Encerrar chamada"
+            >
+              <PhoneOff className="h-6 w-6" />
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
       <Dialog open={!!incoming && !callId} onOpenChange={(open) => !open && void declineCall()}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Chamada de áudio recebida</DialogTitle>
-            <DialogDescription>
-              {targets.find((target) => target.id === incoming?.caller_id)?.full_name ??
-                "Um participante"}{" "}
-              está ligando.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="flex justify-end gap-2">
-            <Button type="button" variant="outline" onClick={() => void declineCall()}>
-              Recusar
-            </Button>
-            <Button type="button" onClick={() => void acceptCall()}>
-              <Phone className="mr-2 h-4 w-4" />
-              Atender
-            </Button>
+        <DialogContent className="sm:max-w-sm">
+          <div className="flex flex-col items-center py-5 text-center">
+            <Avatar className="mb-5 h-28 w-28 ring-4 ring-primary/15">
+              <AvatarImage
+                src={targets.find((target) => target.id === incoming?.caller_id)?.avatar_url ?? undefined}
+                alt={targets.find((target) => target.id === incoming?.caller_id)?.full_name ?? "Foto do contato"}
+              />
+              <AvatarFallback className="text-3xl">
+                {initials(targets.find((target) => target.id === incoming?.caller_id)?.full_name ?? "Contato")}
+              </AvatarFallback>
+            </Avatar>
+            <DialogHeader className="items-center">
+              <DialogTitle className="text-xl">{
+                targets.find((target) => target.id === incoming?.caller_id)?.full_name ?? "Um participante"
+              }</DialogTitle>
+              <DialogDescription>Chamada de áudio recebida</DialogDescription>
+            </DialogHeader>
+            <div className="mt-8 flex w-full justify-center gap-10">
+              <div className="flex flex-col items-center gap-2">
+                <Button type="button" variant="destructive" size="lg" className="h-14 w-14 rounded-full" onClick={() => void declineCall()} aria-label="Recusar chamada">
+                  <PhoneOff className="h-6 w-6" />
+                </Button>
+                <span className="text-xs text-muted-foreground">Recusar</span>
+              </div>
+              <div className="flex flex-col items-center gap-2">
+                <Button type="button" size="lg" className="h-14 w-14 rounded-full bg-success hover:bg-success/90" onClick={() => void acceptCall()} aria-label="Atender chamada">
+                  <Phone className="h-6 w-6" />
+                </Button>
+                <span className="text-xs text-muted-foreground">Atender</span>
+              </div>
+            </div>
           </div>
         </DialogContent>
       </Dialog>
