@@ -215,6 +215,18 @@ export function ChatWorkspace({ conversationId }: { conversationId?: string | un
   });
   return (
     <div className="overflow-hidden rounded-lg border bg-card shadow-card lg:grid lg:h-[calc(100vh-7.5rem)] lg:grid-cols-[320px_minmax(0,1fr)]">
+      {me?.profile && memberships.map((membership) => (
+        <AudioCallControl
+          key={`incoming-${membership.conversation_id}`}
+          conversationId={membership.conversation_id}
+          userId={me.profile.id}
+          targets={allParticipants
+            .filter((participant) => participant.conversation_id === membership.conversation_id && participant.user_id !== me.profile.id)
+            .map((participant) => participant.profiles)
+            .filter((profile): profile is ProfileLite => !!profile)}
+          incomingOnly
+        />
+      ))}
       <aside className={cn("border-r", conversationId && "hidden lg:block")}>
         <div className="flex h-16 items-center justify-between border-b px-4">
           <div>
@@ -1078,10 +1090,12 @@ function AudioCallControl({
   conversationId,
   userId,
   targets,
+  incomingOnly = false,
 }: {
   conversationId: string;
   userId: string;
   targets: ProfileLite[];
+  incomingOnly?: boolean;
 }) {
   const [incoming, setIncoming] = useState<ChatCallRow | null>(null);
   const [callId, setCallId] = useState<string | null>(null);
@@ -1148,7 +1162,7 @@ function AudioCallControl({
   }
 
   useEffect(() => {
-    if (callId) return;
+    if (callId || !incomingOnly) return;
     let active = true;
     const refreshIncoming = async () => {
       const { data, error } = await supabase
@@ -1192,7 +1206,7 @@ function AudioCallControl({
       window.clearInterval(interval);
       void supabase.removeChannel(channel);
     };
-  }, [callId, conversationId, userId]);
+  }, [callId, conversationId, userId, incomingOnly]);
 
   useEffect(() => {
     if (!callId) return;
@@ -1395,7 +1409,7 @@ function AudioCallControl({
             <PhoneOff />
           </Button>
         </>
-      ) : singleTarget ? (
+      ) : !incomingOnly && singleTarget ? (
         <Button
           type="button"
           variant="ghost"
@@ -1406,7 +1420,7 @@ function AudioCallControl({
         >
           <Phone />
         </Button>
-      ) : targets.length > 1 ? (
+      ) : !incomingOnly && targets.length > 1 ? (
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button type="button" variant="ghost" size="icon" aria-label="Iniciar chamada de áudio">
