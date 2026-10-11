@@ -3,6 +3,8 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useRef, useState } from "react";
 import {
   ArrowLeft,
+  Bookmark,
+  BookmarkCheck,
   Check,
   CheckCheck,
   Copy,
@@ -22,6 +24,7 @@ import {
   Smile,
   Square,
   Trash2,
+  UserMinus,
   UserPlus,
   Users,
 } from "lucide-react";
@@ -91,6 +94,19 @@ type MessageRow = {
   created_at: string;
   profiles: ProfileLite | null;
   chat_reactions: Array<{ emoji: string; user_id: string }>;
+};
+type FavoriteMessageRow = {
+  message_id: string;
+  created_at: string;
+  chat_messages: {
+    id: string;
+    conversation_id: string;
+    body: string;
+    created_at: string;
+    deleted_at: string | null;
+    profiles: { full_name: string } | null;
+    chat_conversations: { name: string | null; kind: string } | null;
+  } | null;
 };
 const REACTIONS = ["👍", "❤️", "😂", "😮", "😢", "🙏"];
 
@@ -177,6 +193,26 @@ export function ChatWorkspace({ conversationId }: { conversationId?: string | un
     };
   }, [qc]);
   const active = memberships.find((x) => x.conversation_id === conversationId);
+  const { data: canManageGroups = false } = useQuery({
+    queryKey: ["chat-group-management-permission", me?.profile?.id],
+    enabled: !!me?.profile?.id,
+    queryFn: async () => {
+      const userId = me?.profile?.id;
+      if (!userId) return false;
+      const [{ data: roles, error: rolesError }, { data: profile, error: profileError }] = await Promise.all([
+        supabase.from("user_roles").select("role").eq("user_id", userId),
+        supabase.from("profiles").select("position_id,active,approved").eq("id", userId).maybeSingle(),
+      ]);
+      if (rolesError) throw rolesError;
+      if (profileError) throw profileError;
+      if (!profile?.active || !profile.approved) return false;
+      if ((roles ?? []).some((row) => row.role === "admin" || row.role === "gerente")) return true;
+      if (!profile.position_id) return false;
+      const { data: position, error: positionError } = await supabase.from("positions").select("name").eq("id", profile.position_id).maybeSingle();
+      if (positionError) throw positionError;
+      return ["administrador", "gerente", "gerência", "encarregado de estoque", "encarregado"].includes((position?.name ?? "").trim().toLocaleLowerCase("pt-BR"));
+    },
+  });
   return (
     <div className="overflow-hidden rounded-lg border bg-card shadow-card lg:grid lg:h-[calc(100vh-7.5rem)] lg:grid-cols-[320px_minmax(0,1fr)]">
       <aside className={cn("border-r", conversationId && "hidden lg:block")}>
@@ -185,10 +221,13 @@ export function ChatWorkspace({ conversationId }: { conversationId?: string | un
             <h1 className="font-bold">Chat</h1>
             <p className="text-xs text-muted-foreground">{memberships.length} conversas</p>
           </div>
-          <NewConversationDialog
+          <div className="flex items-center gap-2">
+            <FavoriteMessagesDialog userId={me?.profile?.id} />
+            <NewConversationDialog
             profiles={profiles.filter((p) => p.id !== me?.profile?.id)}
             userId={me?.profile?.id}
-          />
+            />
+          </div>
         </div>
         <div className="p-3">
           <div className="relative">
@@ -266,6 +305,7 @@ export function ChatWorkspace({ conversationId }: { conversationId?: string | un
             participants={allParticipants.filter((p) => p.conversation_id === conversationId)}
             profiles={profiles.filter((profile) => profile.id !== me.profile.id)}
             me={me.profile}
+            canManageGroups={canManageGroups}
           />
         ) : conversationId && membershipsError ? (
           <div className="grid h-full place-items-center p-8 text-center">
@@ -313,6 +353,7 @@ function Conversation({
   participants,
   profiles,
   me,
+  canManageGroups,
 }: {
   conversation: ConversationRow;
   title: string;
@@ -325,6 +366,7 @@ function Conversation({
   }>;
   profiles: ProfileLite[];
   me: ProfileLite;
+  canManageGroups: boolean;
 }) {
   const id = conversation.conversation_id;
   const qc = useQueryClient();
@@ -396,6 +438,16 @@ function Conversation({
       void supabase.removeChannel(channel);
     };
   }, [id, me.id, qc]);
+  const { data: favoriteMessageIds = [] } = useQuery({
+    queryKey: ["chat-message-favorite-ids", me.id],
+    queryFn: async () => {
+      const { data, error } = await supabase.from("chat_message_favorites").select("message_id").eq("user_id", me.id);
+      if (error) throw error;
+      return (data ?? []).map((row) => row.message_id as string);
+    },
+    enabled: !!me.id,
+    refetchInterval: 15_000,
+  });
   const latestMessage = messages.at(-1);
   const latestMessageAt = latestMessage?.created_at;
   useEffect(() => {
@@ -571,13 +623,16 @@ function Conversation({
             .filter((participant) => participant.user_id !== me.id && participant.profiles)
             .map((participant) => participant.profiles!)}
         />
-        {conversation.chat_conversations?.kind === "group" && conversation.is_admin && (
+        {conversation.chat_conversations?.kind === "group" && canManageGroups && (
           <AddGroupMembersDialog
             conversationId={id}
             profiles={profiles.filter(
               (profile) => !participants.some((participant) => participant.user_id === profile.id),
             )}
           />
+        )}
+        {conversation.chat_conversations?.kind === "group" && canManageGroups && (
+          <ManageGroupMembersDialog conversationId={id} participants={participants} userId={me.id} />
         )}
       </header>
       <ScrollArea className="flex-1">
@@ -607,7 +662,12 @@ function Conversation({
                   inputRef.current?.focus();
                 }}
                 onEdit={() => startEdit(message)}
-                onChanged={() => void qc.invalidateQueries({ queryKey: ["chat-messages", id] })}
+                onChanged={() => {
+                  void qc.invalidateQueries({ queryKey: ["chat-messages", id] });
+                  void qc.invalidateQueries({ queryKey: ["chat-message-favorite-ids", me.id] });
+                  void qc.invalidateQueries({ queryKey: ["chat-message-favorites", me.id] });
+                }}
+                favorite={favoriteMessageIds.includes(message.id)}
                 userId={me.id}
                 readBy={participants.filter((participant) => participant.user_id !== me.id)}
                 isGroup={conversation.chat_conversations?.kind === "group"}
@@ -715,6 +775,7 @@ function MessageItem({
   onReply,
   onEdit,
   onChanged,
+  favorite,
   userId,
   readBy,
   isGroup,
@@ -725,6 +786,7 @@ function MessageItem({
   onReply: () => void;
   onEdit: () => void;
   onChanged: () => void;
+  favorite: boolean;
   userId: string;
   readBy: Array<{ user_id: string; last_read_at: string }>;
   isGroup: boolean;
@@ -746,6 +808,16 @@ function MessageItem({
       : await query.insert({ message_id: message.id, user_id: userId, emoji });
     if (error) toast.error("Não foi possível registrar a reação.");
     else onChanged();
+  }
+  async function toggleFavorite() {
+    const { error } = favorite
+      ? await supabase.from("chat_message_favorites").delete().eq("user_id", userId).eq("message_id", message.id)
+      : await supabase.from("chat_message_favorites").insert({ user_id: userId, message_id: message.id });
+    if (error) toast.error(favorite ? "Não foi possível remover dos favoritos." : "Não foi possível favoritar a mensagem.");
+    else {
+      toast.success(favorite ? "Mensagem removida dos favoritos." : "Mensagem favoritada.");
+      onChanged();
+    }
   }
   async function remove() {
     const { error } = await supabase
@@ -877,6 +949,10 @@ function MessageItem({
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align={mine ? "end" : "start"}>
+                  <DropdownMenuItem onClick={() => void toggleFavorite()}>
+                    {favorite ? <BookmarkCheck /> : <Bookmark />}
+                    {favorite ? "Remover dos favoritos" : "Favoritar mensagem"}
+                  </DropdownMenuItem>
                   <DropdownMenuItem
                     onClick={() => void navigator.clipboard.writeText(message.body)}
                   >
@@ -1533,6 +1609,155 @@ function NewConversationDialog({
             {busy ? "Criando..." : "Criar grupo"}
           </Button>
         ) : null}
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+function FavoriteMessagesDialog({ userId }: { userId?: string }) {
+  const { data: favorites = [], isLoading, isError } = useQuery({
+    queryKey: ["chat-message-favorites", userId],
+    enabled: !!userId,
+    queryFn: async () => {
+      if (!userId) return [];
+      const { data, error } = await supabase
+        .from("chat_message_favorites")
+        .select("message_id,created_at,chat_messages!inner(id,conversation_id,body,created_at,deleted_at,profiles!chat_messages_sender_id_fkey(full_name),chat_conversations(name,kind))")
+        .eq("user_id", userId)
+        .order("created_at", { ascending: false });
+      if (error) throw error;
+      return (data ?? []) as unknown as FavoriteMessageRow[];
+    },
+  });
+
+  return (
+    <Dialog>
+      <DialogTrigger asChild>
+        <Button size="icon" variant="outline" aria-label="Mensagens favoritas" title="Mensagens favoritas">
+          <Bookmark />
+        </Button>
+      </DialogTrigger>
+      <DialogContent className="max-h-[85vh] sm:max-w-xl">
+        <DialogHeader>
+          <DialogTitle>Mensagens favoritas</DialogTitle>
+          <DialogDescription>Mensagens que você salvou nos chats privados e grupos.</DialogDescription>
+        </DialogHeader>
+        <ScrollArea className="max-h-[60vh] pr-3">
+          {isLoading ? (
+            <p className="py-8 text-center text-sm text-muted-foreground">Carregando mensagens favoritas...</p>
+          ) : isError ? (
+            <p className="py-8 text-center text-sm text-destructive">Não foi possível carregar as mensagens favoritas.</p>
+          ) : favorites.length === 0 ? (
+            <p className="py-8 text-center text-sm text-muted-foreground">Você ainda não favoritou nenhuma mensagem.</p>
+          ) : (
+            <div className="space-y-2">
+              {favorites.map((favorite) => {
+                const message = favorite.chat_messages;
+                if (!message) return null;
+                const title = message.chat_conversations?.kind === "group"
+                  ? (message.chat_conversations.name ?? "Grupo")
+                  : "Conversa privada";
+                return (
+                  <Link
+                    key={favorite.message_id}
+                    to="/chat/$conversationId"
+                    params={{ conversationId: message.conversation_id }}
+                    className="block rounded-lg border p-3 transition-colors hover:bg-muted"
+                  >
+                    <div className="mb-1 flex items-center justify-between gap-2 text-xs text-muted-foreground">
+                      <span className="truncate font-medium">{title} · {message.profiles?.full_name ?? "Colaborador"}</span>
+                      <span className="shrink-0">{new Date(message.created_at).toLocaleDateString("pt-BR")}</span>
+                    </div>
+                    <p className="line-clamp-3 break-words text-sm">
+                      {message.deleted_at ? "Mensagem excluída" : (message.body || "Mensagem com anexo")}
+                    </p>
+                  </Link>
+                );
+              })}
+            </div>
+          )}
+        </ScrollArea>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+function ManageGroupMembersDialog({
+  conversationId,
+  participants,
+  userId,
+}: {
+  conversationId: string;
+  participants: Array<{ user_id: string; profiles: ProfileLite | null }>;
+  userId: string;
+}) {
+  const [open, setOpen] = useState(false);
+  const [removingId, setRemovingId] = useState<string | null>(null);
+  const qc = useQueryClient();
+
+  async function removeMember(memberId: string) {
+    if (removingId) return;
+    setRemovingId(memberId);
+    try {
+      const { error } = await supabase
+        .from("chat_participants")
+        .delete()
+        .eq("conversation_id", conversationId)
+        .eq("user_id", memberId);
+      if (error) throw error;
+      await Promise.all([
+        qc.invalidateQueries({ queryKey: ["chat-participants"] }),
+        qc.invalidateQueries({ queryKey: ["chat-conversations"] }),
+      ]);
+      toast.success("Participante removido do grupo.");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Não foi possível remover o participante.");
+    } finally {
+      setRemovingId(null);
+    }
+  }
+
+  return (
+    <Dialog open={open} onOpenChange={setOpen}>
+      <DialogTrigger asChild>
+        <Button size="icon" variant="ghost" aria-label="Gerenciar participantes" title="Gerenciar participantes">
+          <Users />
+        </Button>
+      </DialogTrigger>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Gerenciar participantes</DialogTitle>
+          <DialogDescription>
+            Somente Administrador, Gerência ou Encarregado pode remover outras pessoas do grupo.
+          </DialogDescription>
+        </DialogHeader>
+        <ScrollArea className="max-h-[60vh] pr-3">
+          <div className="space-y-2">
+            {participants.map((participant) => (
+              <div key={participant.user_id} className="flex items-center gap-3 rounded-md border p-2">
+                <Avatar className="h-9 w-9">
+                  <AvatarImage src={participant.profiles?.avatar_url ?? undefined} />
+                  <AvatarFallback>{initials(participant.profiles?.full_name ?? "Colaborador")}</AvatarFallback>
+                </Avatar>
+                <span className="min-w-0 flex-1 truncate text-sm">
+                  {participant.profiles?.full_name ?? "Colaborador"}{participant.user_id === userId ? " (Você)" : ""}
+                </span>
+                {participant.user_id !== userId && (
+                  <Button
+                    size="icon"
+                    variant="ghost"
+                    disabled={!!removingId}
+                    onClick={() => void removeMember(participant.user_id)}
+                    aria-label="Remover participante do grupo"
+                    title="Remover do grupo"
+                  >
+                    <UserMinus />
+                  </Button>
+                )}
+              </div>
+            ))}
+          </div>
+        </ScrollArea>
       </DialogContent>
     </Dialog>
   );
