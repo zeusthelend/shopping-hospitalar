@@ -391,7 +391,7 @@ function Conversation({
   const [text, setText] = useState("");
   const [sending, setSending] = useState(false);
   const [recording, setRecording] = useState(false);
-  const [groupToolsOpen, setGroupToolsOpen] = useState(false);
+  const [groupProfileOpen, setGroupProfileOpen] = useState(false);
   const recorderRef = useRef<MediaRecorder | null>(null);
   const recordingStreamRef = useRef<MediaStream | null>(null);
   const recordingChunksRef = useRef<Blob[]>([]);
@@ -617,30 +617,75 @@ function Conversation({
             <ArrowLeft />
           </Link>
         </Button>
-        <Avatar className="h-9 w-9">
-          <AvatarImage src={conversation.chat_conversations?.kind === "group" ? (conversation.chat_conversations.image_url ?? undefined) : (participants.find((p) => p.user_id !== me.id)?.profiles?.avatar_url ?? undefined)} alt={title} />
-          <AvatarFallback>{conversation.chat_conversations?.kind === "group" ? <Users className="h-4 w-4" /> : initials(title)}</AvatarFallback>
-        </Avatar>
-        <button
-          type="button"
-          className="min-w-0 flex-1 text-left"
-          onClick={() => {
-            if (conversation.chat_conversations?.kind === "group") {
-              setGroupToolsOpen((open) => !open);
-            }
-          }}
-          aria-expanded={conversation.chat_conversations?.kind === "group" ? groupToolsOpen : undefined}
-          aria-label={conversation.chat_conversations?.kind === "group" ? "Abrir opções do grupo" : title}
-        >
-          <h2 className="truncate font-bold">{title}</h2>
-          <p className="text-xs text-muted-foreground">
-            {conversation.chat_conversations?.kind === "group"
-              ? `${participants.length} participantes · ${groupToolsOpen ? "opções abertas" : "toque no nome para opções"}`
-              : livePresence(participants.find((p) => p.user_id !== me.id)?.profiles) === "online"
-                ? "Online"
-                : "Offline"}
-          </p>
-        </button>
+        <Dialog open={groupProfileOpen} onOpenChange={setGroupProfileOpen}>
+          <DialogTrigger asChild>
+            <button
+              type="button"
+              className="flex min-w-0 flex-1 items-center gap-3 text-left"
+              aria-label={conversation.chat_conversations?.kind === "group" ? "Ver perfil do grupo" : title}
+            >
+              <Avatar className="h-9 w-9 shrink-0">
+                <AvatarImage src={conversation.chat_conversations?.kind === "group" ? (conversation.chat_conversations.image_url ?? undefined) : (participants.find((p) => p.user_id !== me.id)?.profiles?.avatar_url ?? undefined)} alt={title} />
+                <AvatarFallback>{conversation.chat_conversations?.kind === "group" ? <Users className="h-4 w-4" /> : initials(title)}</AvatarFallback>
+              </Avatar>
+              <span className="min-w-0 flex-1">
+                <span className="block truncate font-bold">{title}</span>
+                <span className="block text-xs text-muted-foreground">
+                  {conversation.chat_conversations?.kind === "group"
+                    ? `${participants.length} participantes · ver perfil`
+                    : livePresence(participants.find((p) => p.user_id !== me.id)?.profiles) === "online"
+                      ? "Online"
+                      : "Offline"}
+                </span>
+              </span>
+            </button>
+          </DialogTrigger>
+          {conversation.chat_conversations?.kind === "group" && (
+            <DialogContent className="max-h-[85dvh] overflow-y-auto sm:max-w-md">
+              <DialogHeader>
+                <div className="flex flex-col items-center gap-3 pb-2 pt-2">
+                  <Avatar className="h-20 w-20">
+                    <AvatarImage src={conversation.chat_conversations.image_url ?? undefined} alt={title} />
+                    <AvatarFallback><Users className="h-8 w-8" /></AvatarFallback>
+                  </Avatar>
+                  <div className="text-center">
+                    <DialogTitle className="text-xl">{title}</DialogTitle>
+                    <DialogDescription>{participants.length} participantes</DialogDescription>
+                  </div>
+                </div>
+              </DialogHeader>
+              {canManageGroups && (
+                <div className="grid grid-cols-2 gap-2">
+                  <GroupAvatarDialog conversationId={id} imageUrl={conversation.chat_conversations.image_url} onUpdated={() => { void qc.invalidateQueries({ queryKey: ["chat-conversations"] }); }} />
+                  <AddGroupMembersDialog
+                    conversationId={id}
+                    profiles={profiles.filter((profile) => !participants.some((participant) => participant.user_id === profile.id))}
+                  />
+                  <ManageGroupMembersDialog conversationId={id} participants={participants} userId={me.id} />
+                </div>
+              )}
+              <div className="space-y-2">
+                <h3 className="text-sm font-semibold">Participantes</h3>
+                <ScrollArea className="max-h-[38dvh] pr-2">
+                  <div className="space-y-1">
+                    {participants.map((participant) => (
+                      <div key={participant.user_id} className="flex items-center gap-3 rounded-md px-2 py-2">
+                        <Avatar className="h-9 w-9">
+                          <AvatarImage src={participant.profiles?.avatar_url ?? undefined} alt={participant.profiles?.full_name ?? "Colaborador"} />
+                          <AvatarFallback>{initials(participant.profiles?.full_name ?? "Colaborador")}</AvatarFallback>
+                        </Avatar>
+                        <span className="min-w-0 flex-1 truncate text-sm">
+                          {participant.profiles?.full_name ?? "Colaborador"}{participant.user_id === me.id ? " (Você)" : ""}
+                        </span>
+                        <span className="text-xs text-muted-foreground">{participant.user_id === conversation.chat_conversations?.created_by ? "Criador" : ""}</span>
+                      </div>
+                    ))}
+                  </div>
+                </ScrollArea>
+              </div>
+            </DialogContent>
+          )}
+        </Dialog>
         <AudioCallControl
           conversationId={id}
           userId={me.id}
@@ -648,28 +693,6 @@ function Conversation({
             .filter((participant) => participant.user_id !== me.id && participant.profiles)
             .map((participant) => participant.profiles!)}
         />
-        {conversation.chat_conversations?.kind === "group" && canManageGroups && groupToolsOpen && (
-          <div className="flex items-center gap-1 rounded-md border bg-background/95 p-1 shadow-sm">
-            <GroupAvatarDialog conversationId={id} imageUrl={conversation.chat_conversations.image_url} onUpdated={() => { void qc.invalidateQueries({ queryKey: ["chat-conversations"] }); }} />
-            <AddGroupMembersDialog
-              conversationId={id}
-              profiles={profiles.filter(
-                (profile) => !participants.some((participant) => participant.user_id === profile.id),
-              )}
-            />
-            <ManageGroupMembersDialog conversationId={id} participants={participants} userId={me.id} />
-            <Button
-              type="button"
-              variant="ghost"
-              size="icon"
-              className="h-8 w-8"
-              aria-label="Fechar opções do grupo"
-              onClick={() => setGroupToolsOpen(false)}
-            >
-              <ArrowLeft className="h-4 w-4" />
-            </Button>
-          </div>
-        )}
       </header>
       <ScrollArea className="flex-1">
         <div className="mx-auto max-w-3xl space-y-4 p-4 sm:p-6">
