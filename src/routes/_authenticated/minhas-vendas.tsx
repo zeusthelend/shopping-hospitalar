@@ -16,7 +16,7 @@ export const Route = createFileRoute("/_authenticated/minhas-vendas")({
 
 type Dav = {
   id: string; dav_number: string; client_name: string; status: string;
-  due_at: string; dav_value: number | string | null;
+  due_at: string; dav_value: number | string | null; seller_id: string;
 };
 
 const money = (value: number) => new Intl.NumberFormat("pt-BR", {
@@ -29,8 +29,19 @@ function MinhasVendas() {
   const [search, setSearch] = useState("");
   const [from, setFrom] = useState("");
   const [to, setTo] = useState("");
+  const [selectedSeller, setSelectedSeller] = useState("all");
   const isManager = !!me?.canManage;
   const userId = me?.profile?.id;
+  const { data: sellers = [] } = useQuery({
+    queryKey: ["dav-sellers-history"],
+    enabled: isManager,
+    queryFn: async () => {
+      const { data, error } = await supabase.from("profiles").select("id,full_name").eq("active", true).eq("approved", true).order("full_name");
+      if (error) throw error;
+      return data ?? [];
+    },
+  });
+  const sellerNames = new Map(sellers.map((seller) => [seller.id, seller.full_name]));
   const bounds = useMemo(() => {
     const now = new Date();
     const start = new Date(now);
@@ -59,7 +70,7 @@ function MinhasVendas() {
       return (data ?? []) as Dav[];
     },
   });
-  const filtered = davs.filter(d => `${d.dav_number} ${d.client_name}`.toLowerCase().includes(search.toLowerCase()));
+  const filtered = davs.filter(d => (selectedSeller === "all" || d.seller_id === selectedSeller) && `${d.dav_number} ${d.client_name} ${sellerNames.get(d.seller_id) ?? ""}`.toLowerCase().includes(search.toLowerCase()));
   const total = filtered.reduce((sum, d) => sum + Number(d.dav_value ?? 0), 0);
   const completed = filtered.filter(d => d.status === "concluido");
   const average = filtered.length ? total / filtered.length : 0;
@@ -81,11 +92,13 @@ function MinhasVendas() {
   return <>
     <div className="print:hidden"><PageHeader title={isManager ? "Acompanhamento de Vendas" : "Minhas Vendas"} subtitle="Acompanhe DAVs, valores e evolução das vendas." action={<div className="flex flex-wrap gap-2"><Button variant="outline" onClick={exportPdf}><Download className="mr-2 h-4 w-4"/>Exportar PDF</Button><Button onClick={exportCsv}><Download className="mr-2 h-4 w-4"/>Exportar planilha</Button></div>} /></div>
     <div className="hidden print:block mb-6"><h1 className="text-2xl font-bold">Relatório de Histórico de DAVs</h1><p>{isManager ? "Acompanhamento de Vendas — visão gerencial" : "Minhas Vendas"}</p><p>Emitido em {new Date().toLocaleString("pt-BR")}</p></div>
+    {isManager && <section className="print:hidden mb-5 rounded-xl border bg-card p-4"><div className="mb-3 flex flex-wrap items-center justify-between gap-2"><div><h2 className="font-semibold">Histórico por vendedor</h2><p className="text-sm text-muted-foreground">Selecione um vendedor para consultar somente as DAVs dele.</p></div>{selectedSeller !== "all" && <Button variant="outline" size="sm" onClick={() => setSelectedSeller("all")}>Ver toda a equipe</Button>}</div><div className="flex flex-wrap gap-2">{sellers.map(seller => <Button key={seller.id} size="sm" variant={selectedSeller === seller.id ? "default" : "outline"} onClick={() => setSelectedSeller(seller.id)}>{seller.full_name}</Button>)}</div></section>}
     <div className="print:hidden mb-5 grid gap-3 rounded-xl border bg-card p-4 sm:grid-cols-2 lg:grid-cols-4">
       <div><label className="mb-1 block text-xs text-muted-foreground">Período</label><Select value={period} onValueChange={setPeriod}><SelectTrigger><SelectValue/></SelectTrigger><SelectContent><SelectItem value="today">Hoje</SelectItem><SelectItem value="week">Últimos 7 dias</SelectItem><SelectItem value="month">Este mês</SelectItem><SelectItem value="all">Todo o período</SelectItem><SelectItem value="custom">Personalizado</SelectItem></SelectContent></Select></div>
       {period === "custom" && <><div><label className="mb-1 block text-xs text-muted-foreground">De</label><Input type="date" value={from} onChange={e=>setFrom(e.target.value)}/></div><div><label className="mb-1 block text-xs text-muted-foreground">Até</label><Input type="date" value={to} onChange={e=>setTo(e.target.value)}/></div></>}
       <div><label className="mb-1 block text-xs text-muted-foreground">Buscar DAV ou cliente</label><Input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Digite para filtrar"/></div>
     </div>
+    {isManager && selectedSeller !== "all" && <p className="mb-3 text-sm text-muted-foreground">Exibindo histórico de <strong>{sellerNames.get(selectedSeller) ?? "Vendedor"}</strong>.</p>}
     <div className="mb-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
       <Metric title="DAVs no período" value={String(filtered.length)} icon={<ReceiptText className="h-5 w-5"/>}/>
       <Metric title="Valor total das DAVs" value={money(total)} icon={<CircleDollarSign className="h-5 w-5"/>}/>
@@ -93,7 +106,7 @@ function MinhasVendas() {
       <Metric title="DAVs concluídos" value={String(completed.length)} icon={<FileSpreadsheet className="h-5 w-5"/>}/>
     </div>
     {error ? <p className="rounded-lg border border-destructive/40 p-4 text-sm text-destructive">Não foi possível carregar as vendas. Confirme a migração do valor das DAVs e as permissões de acesso.</p> : isLoading ? <p className="p-8 text-center text-sm text-muted-foreground">Carregando vendas...</p> : filtered.length === 0 ? <Empty text="Nenhuma DAV encontrada neste período."/> :
-      <div className="overflow-x-auto rounded-xl border bg-card"><table className="w-full min-w-[720px] text-left text-sm"><thead className="bg-muted/60"><tr>{["DAV","Data","Cliente","Status","Valor"].map(h=><th key={h} className="px-4 py-3 font-semibold">{h}</th>)}</tr></thead><tbody>{filtered.map(d=><tr key={d.id} className="border-t"><td className="px-4 py-3 font-semibold">{d.dav_number}</td><td className="px-4 py-3">{new Date(d.due_at).toLocaleDateString("pt-BR")}</td><td className="px-4 py-3">{d.client_name}</td><td className="px-4 py-3">{d.status.replace("_"," ")}</td><td className="px-4 py-3 font-medium">{money(Number(d.dav_value ?? 0))}</td></tr>)}</tbody><tfoot className="border-t bg-muted/40"><tr><td colSpan={4} className="px-4 py-3 text-right font-bold">Total exibido</td><td className="px-4 py-3 font-bold">{money(total)}</td></tr></tfoot></table></div>}
+      <div className="overflow-x-auto rounded-xl border bg-card"><table className="w-full min-w-[720px] text-left text-sm"><thead className="bg-muted/60"><tr>{["DAV","Data","Cliente",...(isManager ? ["Vendedor"] : []),"Status","Valor"].map(h=><th key={h} className="px-4 py-3 font-semibold">{h}</th>)}</tr></thead><tbody>{filtered.map(d=><tr key={d.id} className="border-t"><td className="px-4 py-3 font-semibold">{d.dav_number}</td><td className="px-4 py-3">{new Date(d.due_at).toLocaleDateString("pt-BR")}</td><td className="px-4 py-3">{d.client_name}</td>{isManager && <td className="px-4 py-3"><button type="button" className="font-medium text-primary underline-offset-4 hover:underline" onClick={() => setSelectedSeller(d.seller_id)}>{sellerNames.get(d.seller_id) ?? "Não identificado"}</button></td>}<td className="px-4 py-3">{d.status.replace("_"," ")}</td><td className="px-4 py-3 font-medium">{money(Number(d.dav_value ?? 0))}</td></tr>)}</tbody><tfoot className="border-t bg-muted/40"><tr><td colSpan={isManager ? 5 : 4} className="px-4 py-3 text-right font-bold">Total exibido</td><td className="px-4 py-3 font-bold">{money(total)}</td></tr></tfoot></table></div>}
   </>;
 }
 
