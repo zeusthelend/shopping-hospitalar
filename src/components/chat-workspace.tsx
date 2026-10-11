@@ -617,7 +617,7 @@ function Conversation({
             <ArrowLeft />
           </Link>
         </Button>
-        <Dialog open={groupProfileOpen} onOpenChange={setGroupProfileOpen}>
+        <Dialog open={conversation.chat_conversations?.kind === "group" && groupProfileOpen} onOpenChange={(open) => { if (conversation.chat_conversations?.kind === "group") setGroupProfileOpen(open); }}>
           <DialogTrigger asChild>
             <button
               type="button"
