@@ -210,7 +210,7 @@ export function ChatWorkspace({ conversationId }: { conversationId?: string | un
       if (!profile.position_id) return false;
       const { data: position, error: positionError } = await supabase.from("positions").select("name").eq("id", profile.position_id).maybeSingle();
       if (positionError) throw positionError;
-      return ["encarregado de estoque", "encarregado"].includes((position?.name ?? "").trim().toLocaleLowerCase("pt-BR"));
+      return ["administrador", "gerente", "gerência", "encarregado de estoque", "encarregado"].includes((position?.name ?? "").trim().toLocaleLowerCase("pt-BR"));
     },
   });
   return (
