@@ -514,6 +514,7 @@ export type Database = {
           created_at?: string
           created_by?: string
           dav_number?: string
+          dav_value?: number | null
           description?: string
           due_at?: string
           id?: string
