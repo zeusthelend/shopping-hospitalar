@@ -69,7 +69,7 @@ export function EmployeeAccessManagement() {
       if (error) throw error;
       if (typeof pin !== "string" || !/^\d{8}$/.test(pin)) throw new Error("O servidor não retornou um PIN válido.");
       setIssuedPin({ employeeId, employeeName, pin });
-      toast.success("Novo PIN de reativação gerado. Os PINs anteriores continuam expirando conforme a validade.");
+      toast.success("Novo PIN gerado. Os PINs anteriores ainda não utilizados foram invalidados.");
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Não foi possível gerar o PIN.");
     } finally {
