@@ -17,6 +17,26 @@ export const Route = createFileRoute("/_authenticated/dashboard")({
   component: Dashboard,
 });
 
+function getGoogleSlidesEmbedUrl(value: string): string | null {
+  try {
+    const url = new URL(value.trim());
+    if (url.hostname !== "docs.google.com") return null;
+    const publishedId = url.pathname.match(/\/presentation\/(?:u\/\d+\/)?d\/e\/([a-zA-Z0-9_-]+)/)?.[1];
+    if (publishedId) return "https://docs.google.com/presentation/d/e/" + publishedId + "/embed?start=true&loop=true&delayms=3000";
+    const presentationId = url.pathname.match(/\/presentation\/(?:u\/\d+\/)?d\/([a-zA-Z0-9_-]+)/)?.[1];
+    if (!presentationId || presentationId === "e") return null;
+    return "https://docs.google.com/presentation/d/" + presentationId + "/embed?start=true&loop=true&delayms=3000";
+  } catch {
+    return null;
+  }
+}
+
+function normalizeImageUrl(value: string): string {
+  const url = value.trim();
+  const driveId = url.match(/drive\.google\.com\/(?:file\/d\/|open\?id=|uc\?[^#]*id=)([a-zA-Z0-9_-]+)/)?.[1];
+  return driveId ? "https://drive.google.com/uc?export=view&id=" + driveId : url;
+}
+
 function Dashboard() {
   const { data: me } = useMe();
   const { data } = useQuery({ queryKey: ["dashboard"], queryFn: async () => {
@@ -50,7 +70,25 @@ function Dashboard() {
       <Section title="Avisos importantes" icon={Megaphone}>{data?.announcements.length ? data.announcements.map(x => <Item key={x.id} title={x.title} body={x.body} date={x.created_at} important={x.important} />) : <Empty text="Nenhum aviso publicado." />}</Section>
       <Section title="Reuniões próximas" icon={CalendarDays}>{data?.meetings.length ? data.meetings.map(x => <Item key={x.id} title={x.title} body={x.location || "Online"} date={x.starts_at} />) : <Empty text="Nenhuma reunião agendada." />}</Section>
       <Section title="Documentos recentes" icon={FileText}>{data?.documents.length ? data.documents.map(x => <Item key={x.id} title={x.title} body={x.category || "Documento"} date={x.created_at} />) : <Empty text="Nenhum documento recente." />}</Section>
-      <Section title="Publicações recentes" icon={MessageSquare}>{data?.posts.length ? data.posts.map(x => <Item key={x.id} title={x.title} body={x.body} date={x.created_at} />) : <Empty text="Nenhuma publicação recente." />}</Section>
+      <Section title="Publicações recentes" icon={MessageSquare}>{data?.posts.length ? data.posts.map(x => {
+        const mediaUrls: string[] = Array.isArray(x.media_urls) && x.media_urls.length
+          ? x.media_urls
+          : (typeof x.image_url === "string" && x.image_url ? [x.image_url] : []);
+        const firstMedia = mediaUrls[0];
+        const slidesEmbed = firstMedia ? getGoogleSlidesEmbedUrl(firstMedia) : null;
+        return <div key={x.id} className="space-y-2 rounded-lg bg-muted/60 p-3">
+          <Item title={x.title} body={x.body} date={x.created_at} />
+          {firstMedia && (slidesEmbed
+            ? <div className="space-y-1">
+                <iframe src={slidesEmbed} title={x.title + " — slide"} loading="lazy" allowFullScreen referrerPolicy="strict-origin-when-cross-origin" className="h-40 w-full rounded-lg border bg-background" />
+                <a href={firstMedia} target="_blank" rel="noreferrer" className="text-xs text-primary underline underline-offset-4">Abrir apresentação completa</a>
+              </div>
+            : <a href={firstMedia} target="_blank" rel="noreferrer" className="block">
+                <img src={normalizeImageUrl(firstMedia)} alt={x.title} loading="lazy" className="max-h-40 w-full rounded-lg bg-background object-contain" />
+              </a>) }
+          {mediaUrls.length > 1 && <p className="text-xs text-muted-foreground">{mediaUrls.length} itens na galeria — abra Publicações para ver todos os slides.</p>}
+        </div>;
+      }) : <Empty text="Nenhuma publicação recente." />}</Section>
     </div>
   </>;
 }
