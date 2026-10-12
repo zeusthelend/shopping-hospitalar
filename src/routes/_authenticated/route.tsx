@@ -83,7 +83,6 @@ function PendingAccess({
 
   async function redeem(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (!active) return;
     const value = pin.replace(/\D/g, "");
     if (value.length !== 8) {
       toast.error("Informe o PIN de 8 dígitos.");
@@ -92,7 +91,9 @@ function PendingAccess({
 
     setBusy(true);
     try {
-      const { data, error } = await supabase.rpc("redeem_access_pin", { _pin: value });
+      const { data, error } = active
+        ? await supabase.rpc("redeem_access_pin", { _pin: value })
+        : await supabase.rpc("redeem_employee_reactivation_pin", { _pin: value });
       if (error) throw error;
       if (data !== true) throw new Error("PIN inválido, expirado ou já utilizado.");
       await onApproved();
@@ -109,13 +110,13 @@ function PendingAccess({
       <section className="w-full max-w-md space-y-5 rounded-xl border bg-card p-6 shadow-card">
         <div className="flex items-center gap-3">
           <KeyRound className="h-6 w-6 text-highlight" />
-          <h1 className="text-xl font-bold">{active ? "Acesso pendente" : "Conta desativada"}</h1>
+          <h1 className="text-xl font-bold">{active ? "Acesso pendente" : "Conta suspensa"}</h1>
         </div>
         {active ? (
           <>
             <p className="text-sm text-muted-foreground">
               Para proteger os dados da empresa, o acesso só é liberado com um PIN de uso único
-              fornecido por um administrador ou gerente.
+              fornecido por um administrador, gerente ou encarregado autorizado.
             </p>
             <form onSubmit={redeem} className="space-y-3">
               <Input
@@ -135,9 +136,27 @@ function PendingAccess({
             </form>
           </>
         ) : (
-          <p className="text-sm text-muted-foreground">
-            Esta conta foi desativada. Entre em contato com um administrador da empresa.
-          </p>
+          <>
+            <p className="text-sm text-muted-foreground">
+              Esta conta está suspensa. Solicite ao administrador, gerente ou encarregado autorizado um PIN de reativação individual e informe-o abaixo.
+            </p>
+            <form onSubmit={redeem} className="space-y-3">
+              <Input
+                aria-label="PIN de reativação"
+                autoComplete="one-time-code"
+                inputMode="numeric"
+                maxLength={8}
+                pattern="[0-9]{8}"
+                placeholder="PIN de 8 dígitos"
+                required
+                value={pin}
+                onChange={(event) => setPin(event.target.value.replace(/\\D/g, "").slice(0, 8))}
+              />
+              <Button className="w-full" disabled={busy || pin.length !== 8}>
+                {busy ? "Validando..." : "Reativar minha conta"}
+              </Button>
+            </form>
+          </>
         )}
         <Button
           variant="outline"
