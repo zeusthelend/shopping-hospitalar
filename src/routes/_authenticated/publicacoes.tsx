@@ -68,6 +68,8 @@ function Page() {
   const [mediaUrlsText, setMediaUrlsText] = useState("");
   const [busy, setBusy] = useState(false);
 
+  // Only users explicitly assigned the admin role may manage publications/slides.
+  // All approved employees can still read published presentations.
   const { data: canManage = false } = useQuery({
     queryKey: ["publication-management-permission", me?.profile?.id],
     enabled: !!me?.profile?.id,
@@ -76,17 +78,12 @@ function Page() {
       if (!uid) return false;
       const [{ data: roles, error: rolesError }, { data: profile, error: profileError }] = await Promise.all([
         supabase.from("user_roles").select("role").eq("user_id", uid),
-        supabase.from("profiles").select("position_id,active,approved").eq("id", uid).maybeSingle(),
+        supabase.from("profiles").select("active,approved").eq("id", uid).maybeSingle(),
       ]);
       if (rolesError) throw rolesError;
       if (profileError) throw profileError;
       if (!profile?.active || !profile.approved) return false;
-      if ((roles ?? []).some((r) => r.role === "admin" || r.role === "gerente")) return true;
-      if (!profile.position_id) return false;
-      const { data: position, error } = await supabase.from("positions").select("name").eq("id", profile.position_id).maybeSingle();
-      if (error) throw error;
-      return ["administrador", "gerente", "gerência", "encarregado", "encarregado de estoque"]
-        .includes((position?.name ?? "").trim().toLocaleLowerCase("pt-BR"));
+      return (roles ?? []).some((r) => r.role === "admin");
     },
   });
 
