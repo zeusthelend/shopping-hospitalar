@@ -158,8 +158,8 @@ function Page() {
       {mediaMode !== "text" && <>
         <Label htmlFor="publication-media">{mediaMode === "image" ? "Endereço público da imagem" : "Endereços das imagens (um por linha, na ordem dos slides)"}</Label>
         <Textarea id="publication-media" value={mediaUrlsText} onChange={(event) => setMediaUrlsText(event.target.value)} rows={mediaMode === "image" ? 2 : 5} placeholder={"https://exemplo.com/imagem-1.jpg\nhttps://exemplo.com/imagem-2.jpg"} />
-        <p className="text-xs text-muted-foreground">Use links públicos de imagens. A galeria permite deslizar horizontalmente entre as imagens.</p>
-        <div className="flex flex-wrap gap-2">{mediaUrlsText.split(/\n|,/).map((url) => url.trim()).filter((url) => /^https?:\/\//i.test(url)).map((url, index) => <img key={url + index} src={url} alt={"Prévia " + (index + 1)} className="max-h-36 rounded-lg border object-contain" onError={(event) => { event.currentTarget.style.display = "none"; }} />)}</div>
+        <p className="text-xs text-muted-foreground">Use links públicos diretos de imagens. Links compartilhados do Google Drive são convertidos quando possível; apresentações do Google Slides precisam de link de imagem/exportação pública. A galeria avança automaticamente.</p>
+        <div className="flex flex-wrap gap-2">{mediaUrlsText.split(/\n|,/).map((url) => url.trim()).filter((url) => /^https?:\/\//i.test(url)).map((url, index) => <img key={url + index} src={normalizeImageUrl(url)} alt={"Prévia " + (index + 1)} className="max-h-36 rounded-lg border object-contain" onError={(event) => { event.currentTarget.style.display = "none"; }} />)}</div>
       </>}</div>
       <div className="flex gap-2"><Button type="submit" disabled={busy}><Save className="mr-2 h-4 w-4" />{busy ? "Salvando..." : editing ? "Salvar alterações" : "Publicar"}</Button><Button type="button" variant="outline" onClick={reset}>Cancelar</Button></div>
     </form>}
