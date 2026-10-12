@@ -170,7 +170,7 @@ function Page() {
       {mediaMode !== "text" && <>
         <Label htmlFor="publication-media">{mediaMode === "image" ? "Endereço público da imagem" : "Endereços das imagens (um por linha, na ordem dos slides)"}</Label>
         <Textarea id="publication-media" value={mediaUrlsText} onChange={(event) => setMediaUrlsText(event.target.value)} rows={mediaMode === "image" ? 2 : 5} placeholder={"https://exemplo.com/imagem-1.jpg\nhttps://exemplo.com/imagem-2.jpg"} />
-        <p className="text-xs text-muted-foreground">Use links públicos diretos de imagens. Links compartilhados do Google Drive são convertidos quando possível; apresentações do Google Slides precisam de link de imagem/exportação pública. A galeria avança automaticamente.</p>
+        <p className="text-xs text-muted-foreground">Use links públicos diretos de imagens ou uma apresentação do Google Slides compartilhada para visualização. Links compartilhados do Google Drive são convertidos quando possível. A galeria avança automaticamente entre os itens.</p>
         <div className="flex flex-wrap gap-2">{mediaUrlsText.split(/\n|,/).map((url) => url.trim()).filter((url) => /^https?:\/\//i.test(url)).map((url, index) => {
           const embedUrl = getGoogleSlidesEmbedUrl(url);
           return embedUrl
@@ -193,7 +193,7 @@ function Page() {
                 return embedUrl
                   ? <iframe key={url + index} src={embedUrl} title={publication.title + " — apresentação " + (index + 1)} loading="lazy" allowFullScreen className={urls.length > 1 ? "h-[420px] w-[85%] shrink-0 snap-center rounded-lg border bg-muted" : "h-[420px] w-full border-0 bg-muted"} />
                   : <img key={url + index} src={normalizeImageUrl(url)} alt={publication.title + " — imagem " + (index + 1)} loading="lazy" className={urls.length > 1 ? "max-h-[420px] w-[85%] shrink-0 snap-center rounded-lg bg-muted object-contain" : "max-h-[420px] w-full object-contain bg-muted"} onError={(event) => { event.currentTarget.style.display = "none"; }} />;
-              })} alt={publication.title + " — imagem " + (index + 1)} loading="lazy" className={urls.length > 1 ? "max-h-[420px] w-[85%] shrink-0 snap-center rounded-lg bg-muted object-contain" : "max-h-[420px] w-full object-contain bg-muted"} onError={(event) => { event.currentTarget.style.display = "none"; }} />)}
+              })}
             </div>
             {urls.length > 1 && <div className="flex items-center justify-center gap-1 pb-3 text-xs text-muted-foreground"><ImageIcon className="h-3 w-3" />{urls.length} imagens · deslize ou use as setas</div>}
           </div>}
