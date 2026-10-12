@@ -139,7 +139,7 @@ function Page() {
     setTitle(publication.title);
     setBody(publication.body);
     const urls = publication.media_urls?.length ? publication.media_urls : (publication.image_url ? [publication.image_url] : []);
-    setMediaMode(urls.length === 1 && isCanvaSiteUrl(urls[0]) ? "canva" : urls.length > 1 ? "slides" : urls.length === 1 ? "image" : "text");
+    setMediaMode(urls.length > 0 && isCanvaSiteUrl(urls[0]) ? "canva" : urls.length > 1 ? "slides" : urls.length === 1 ? "image" : "text");
     setMediaUrlsText(urls.join("\n"));
     setFormOpen(true);
   }
