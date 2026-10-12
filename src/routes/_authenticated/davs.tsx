@@ -83,7 +83,9 @@ function DavsPage() {
     },
   });
   const { data = [] } = useQuery({
-    queryKey: ["davs"],
+    // Isolate cached DAV data by authenticated profile to prevent cross-user cache reuse.
+    queryKey: ["davs", userId],
+    enabled: !!userId,
     queryFn: async () => {
       const { data, error } = await supabase
         .from("davs")
