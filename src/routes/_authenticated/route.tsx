@@ -150,7 +150,7 @@ function PendingAccess({
                 placeholder="PIN de 8 dígitos"
                 required
                 value={pin}
-                onChange={(event) => setPin(event.target.value.replace(/\\D/g, "").slice(0, 8))}
+                onChange={(event) => setPin(event.target.value.replace(/\D/g, "").slice(0, 8))}
               />
               <Button className="w-full" disabled={busy || pin.length !== 8}>
                 {busy ? "Validando..." : "Reativar minha conta"}
