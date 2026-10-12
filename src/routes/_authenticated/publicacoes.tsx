@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Image as ImageIcon, Pencil, Plus, Save, Trash2, X, ChevronLeft, ChevronRight } from "lucide-react";
@@ -30,6 +30,13 @@ type Publication = {
   image_url: string | null;
   media_urls: string[] | null;
 };
+
+function normalizeImageUrl(value: string): string {
+  const url = value.trim();
+  const driveId = url.match(/drive\.google\.com\/(?:file\/d\/|open\?id=|uc\?[^#]*id=)([a-zA-Z0-9_-]+)/)?.[1];
+  if (driveId) return 'https://drive.google.com/uc?export=view&id=' + driveId;
+  return url;
+}
 
 function Page() {
   const { data: me } = useMe();
@@ -73,6 +80,18 @@ function Page() {
     },
     refetchInterval: 30000,
   });
+
+  useEffect(() => {
+    const timer = window.setInterval(() => {
+      document.querySelectorAll<HTMLElement>("[data-auto-gallery='true']").forEach((gallery) => {
+        const last = gallery.scrollWidth - gallery.clientWidth;
+        if (last <= 0) return;
+        if (gallery.scrollLeft >= last - 8) gallery.scrollTo({ left: 0, behavior: "smooth" });
+        else gallery.scrollBy({ left: Math.max(240, gallery.clientWidth * 0.85), behavior: "smooth" });
+      });
+    }, 3500);
+    return () => window.clearInterval(timer);
+  }, [publications]);
 
   function reset() {
     setFormOpen(false); setEditing(null); setTitle(""); setBody("");
@@ -151,8 +170,8 @@ function Page() {
         return <article key={publication.id} className="overflow-hidden rounded-xl border bg-card shadow-card">
           {urls.length > 0 && <div className="relative">
             {urls.length > 1 && <div className="absolute inset-x-2 top-1/2 z-10 flex -translate-y-1/2 justify-between"><Button variant="secondary" size="icon" aria-label="Slide anterior" onClick={() => document.getElementById("publication-gallery-" + publication.id)?.scrollBy({ left: -320, behavior: "smooth" })}><ChevronLeft /></Button><Button variant="secondary" size="icon" aria-label="Próximo slide" onClick={() => document.getElementById("publication-gallery-" + publication.id)?.scrollBy({ left: 320, behavior: "smooth" })}><ChevronRight /></Button></div>}
-            <div id={"publication-gallery-" + publication.id} className={urls.length > 1 ? "flex snap-x snap-mandatory gap-3 overflow-x-auto scroll-smooth p-3" : "p-0"}>
-              {urls.map((url, index) => <img key={url + index} src={url} alt={publication.title + " — imagem " + (index + 1)} loading="lazy" className={urls.length > 1 ? "max-h-[420px] w-[85%] shrink-0 snap-center rounded-lg bg-muted object-contain" : "max-h-[420px] w-full object-contain bg-muted"} onError={(event) => { event.currentTarget.style.display = "none"; }} />)}
+            <div id={"publication-gallery-" + publication.id} data-auto-gallery={urls.length > 1 ? "true" : undefined} className={urls.length > 1 ? "flex snap-x snap-mandatory gap-3 overflow-x-auto scroll-smooth p-3" : "p-0"}>
+              {urls.map((url, index) => <img key={url + index} src={normalizeImageUrl(url)} alt={publication.title + " — imagem " + (index + 1)} loading="lazy" className={urls.length > 1 ? "max-h-[420px] w-[85%] shrink-0 snap-center rounded-lg bg-muted object-contain" : "max-h-[420px] w-full object-contain bg-muted"} onError={(event) => { event.currentTarget.style.display = "none"; }} />)}
             </div>
             {urls.length > 1 && <div className="flex items-center justify-center gap-1 pb-3 text-xs text-muted-foreground"><ImageIcon className="h-3 w-3" />{urls.length} imagens · deslize ou use as setas</div>}
           </div>}
