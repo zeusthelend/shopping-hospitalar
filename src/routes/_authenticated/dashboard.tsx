@@ -81,7 +81,7 @@ function Dashboard() {
           {firstMedia && (slidesEmbed
             ? <div className="space-y-1">
                 <iframe src={slidesEmbed} title={x.title + " — slide"} loading="lazy" allowFullScreen referrerPolicy="strict-origin-when-cross-origin" className="h-40 w-full rounded-lg border bg-background" />
-                <a href={firstMedia} target="_blank" rel="noreferrer" className="text-xs text-primary underline underline-offset-4">Abrir apresentação completa</a>
+                <p className="text-xs text-muted-foreground">Apresentação incorporada para visualização.</p>
               </div>
             : <a href={firstMedia} target="_blank" rel="noreferrer" className="block">
                 <img src={normalizeImageUrl(firstMedia)} alt={x.title} loading="lazy" className="max-h-40 w-full rounded-lg bg-background object-contain" />
