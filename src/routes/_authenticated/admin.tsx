@@ -39,6 +39,7 @@ function Admin() {
     },
   });
   const canManageEmployeeAccess = !!me && (me.isAdmin || me.roles.includes("gerente") || (currentPositionName ?? "").toLowerCase().includes("encarregado"));
+  const canManageMembers = !!me && (me.isAdmin || me.roles.includes("gerente"));
   if (me?.profile?.position_id && positionPending) return <main className="grid min-h-screen place-items-center p-6 text-sm text-muted-foreground">Verificando permissões…</main>;
   if (me && !me.isAdmin && !me.roles.includes("gerente") && !canManageEmployeeAccess) return <Navigate to="/dashboard" replace />;
   return (
@@ -47,18 +48,18 @@ function Admin() {
         title="Administração"
         subtitle="Gerencie a estrutura, a identidade e o acesso à empresa."
       />
-      <Tabs defaultValue="members">
+      <Tabs defaultValue={canManageMembers ? "members" : "employee-access"}>
         <TabsList className="mb-5 flex h-auto flex-wrap">
-          <TabsTrigger value="members">Cargos dos membros</TabsTrigger>
+          {canManageMembers && <TabsTrigger value="members">Cargos dos membros</TabsTrigger>}
           {me?.isAdmin && <>
           <TabsTrigger value="departments">Departamentos</TabsTrigger>
           <TabsTrigger value="positions">Cargos</TabsTrigger>
           <TabsTrigger value="branding">Identidade</TabsTrigger>
           </>}
           {canManageEmployeeAccess && <TabsTrigger value="employee-access">Acesso de funcionários</TabsTrigger>}
-          <TabsTrigger value="access">PINs de acesso</TabsTrigger>
+          {canManageMembers && <TabsTrigger value="access">PINs de acesso</TabsTrigger>}
         </TabsList>
-        <TabsContent value="members"><MemberPositions /></TabsContent>
+        {canManageMembers && <TabsContent value="members"><MemberPositions /></TabsContent>}
         {canManageEmployeeAccess && <TabsContent value="employee-access"><EmployeeAccessManagement /></TabsContent>}
         {me?.isAdmin && <>
         <TabsContent value="departments">
@@ -71,9 +72,7 @@ function Admin() {
           <Branding />
         </TabsContent>
         </>}
-        <TabsContent value="access">
-          <AccessPins />
-        </TabsContent>
+        {canManageMembers && <TabsContent value="access"><AccessPins /></TabsContent>}
       </Tabs>
     </>
   );
