@@ -266,7 +266,9 @@ function DavsPage() {
   );
 }
 
-function DavEditDialog({ dav, canManage, sellers }: { dav: any; canManage: boolean; sellers: Array<{ id: string; full_name: string }> }) {
+type DavEditRow = { id: string; dav_number: string; client_name: string; description: string | null; dav_value: number | null; due_at: string; status: string; category?: string | null; seller_id: string; };
+
+function DavEditDialog({ dav, canManage, sellers }: { dav: DavEditRow; canManage: boolean; sellers: Array<{ id: string; full_name: string }> }) {
   const qc = useQueryClient();
   const [open, setOpen] = useState(false);
   const [busy, setBusy] = useState(false);
