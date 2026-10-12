@@ -4,7 +4,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Image as ImageIcon, Pencil, Plus, Save, Trash2, X, ChevronLeft, ChevronRight } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
-import { useMe } from "@/lib/auth";
+import { useMe, uploadSigned } from "@/lib/auth";
 import { PageHeader, Empty } from "@/components/brand";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -56,7 +56,7 @@ function isCanvaSiteUrl(value: string): boolean {
 function isVideoUrl(value: string): boolean {
   try {
     const url = new URL(value.trim());
-    return url.protocol === "https:" && /\\.(mp4|webm|ogg)(?:$|[?#])/i.test(url.pathname + url.search);
+    return url.protocol === "https:" && /\.(mp4|webm|ogg)(?:$|[?#])/i.test(url.pathname + url.search);
   } catch {
     return false;
   }
@@ -78,6 +78,7 @@ function Page() {
   const [body, setBody] = useState("");
   const [mediaMode, setMediaMode] = useState<"text" | "image" | "video" | "gallery" | "canva">("text");
   const [mediaUrlsText, setMediaUrlsText] = useState("");
+  const [videoFile, setVideoFile] = useState<File | null>(null);
   const [busy, setBusy] = useState(false);
 
   // Only users explicitly assigned the admin role may manage publications/slides.
@@ -123,7 +124,7 @@ function Page() {
 
   function reset() {
     setFormOpen(false); setEditing(null); setTitle(""); setBody("");
-    setMediaMode("text"); setMediaUrlsText("");
+    setMediaMode("text"); setMediaUrlsText(""); setVideoFile(null);
   }
 
   function edit(publication: Publication) {
@@ -133,6 +134,7 @@ function Page() {
     const urls = publication.media_urls?.length ? publication.media_urls : (publication.image_url ? [publication.image_url] : []);
     setMediaMode(urls.length > 0 && isCanvaSiteUrl(urls[0]) ? "canva" : urls.length > 0 && isVideoUrl(urls[0]) ? "video" : urls.length > 1 ? "gallery" : urls.length === 1 ? "image" : "text");
     setMediaUrlsText(urls.join("\n"));
+    setVideoFile(null);
     setFormOpen(true);
   }
 
@@ -140,9 +142,10 @@ function Page() {
     event.preventDefault();
     if (!canManage || busy) return;
     if (!title.trim() || !body.trim()) { toast.error("Preencha o título e o texto da publicação."); return; }
-    const urls = mediaMode === "text" ? [] : mediaUrlsText.split(/\n|,/).map((url) => url.trim()).filter(Boolean);
-    if (mediaMode !== "text" && !urls.length) { toast.error(mediaMode === "canva" ? "Adicione o link público do site Canva." : "Adicione ao menos um endereço de imagem."); return; }
-    if (mediaMode === "video" && (urls.length !== 1 || !isVideoUrl(urls[0]))) { toast.error("Adicione um único link HTTPS direto para um vídeo MP4, WebM ou OGG."); return; }
+    let urls = mediaMode === "text" ? [] : mediaUrlsText.split(/\n|,/).map((url) => url.trim()).filter(Boolean);
+    if (mediaMode !== "text" && !(mediaMode === "video" && videoFile) && !urls.length) { toast.error(mediaMode === "canva" ? "Adicione o link público do site Canva." : mediaMode === "video" ? "Selecione um arquivo MP4/WebM ou informe um link direto." : "Adicione ao menos um endereço de imagem."); return; }
+    if (mediaMode === "video" && videoFile && (!["video/mp4", "video/webm"].includes(videoFile.type) || videoFile.size > 20_000_000)) { toast.error("Selecione um vídeo MP4 ou WebM de até 20 MB."); return; }
+    if (mediaMode === "video" && !videoFile && (urls.length !== 1 || !isVideoUrl(urls[0]))) { toast.error("Selecione um arquivo MP4/WebM ou informe um único link HTTPS direto para um vídeo MP4, WebM ou OGG."); return; }
     if (mediaMode === "canva" && (!urls.length || !isCanvaSiteUrl(urls[0]))) { toast.error("O primeiro endereço precisa ser o link HTTPS público do site Canva (canva.site)."); return; }
     if (mediaMode === "canva" && urls.slice(1).some((url) => !/^https:\/\//i.test(url))) { toast.error("Os links das imagens adicionais precisam começar com https://."); return; }
     if (urls.some((url) => !/^https?:\/\//i.test(url))) { toast.error("Os endereços das imagens devem começar com http:// ou https://."); return; }
@@ -150,6 +153,11 @@ function Page() {
     if (mediaMode === "video" && urls.some((url) => !/^https:\/\//i.test(url))) { toast.error("O vídeo precisa usar um endereço HTTPS."); return; }
     setBusy(true);
     try {
+      if (mediaMode === "video" && videoFile) {
+        const safeName = videoFile.name.replace(/[^a-zA-Z0-9._-]/g, "-").slice(-100);
+        const url = await uploadSigned("branding", `video-loop-${Date.now()}-${safeName}`, videoFile);
+        urls = [url];
+      }
       const values = { title: title.trim(), body: body.trim(), image_url: urls[0] ?? null, media_urls: urls, author_id: me?.profile?.id ?? null };
       const result = editing
         ? await supabase.from("posts").update(values).eq("id", editing.id)
@@ -190,9 +198,9 @@ function Page() {
       </div>
       {mediaMode !== "text" && <>
         {mediaMode === "canva" && <p className="text-xs text-muted-foreground">Cole primeiro o link HTTPS do site público do Canva. Para exibir imagens mesmo quando o Canva bloquear a incorporação, adicione abaixo, uma por linha, links HTTPS diretos das imagens públicas usadas no site. O primeiro endereço deve ser o site; os demais serão exibidos como galeria. Links de edição não são aceitos.</p>}
-        {mediaMode === "video" && <p className="text-xs text-muted-foreground">Cole um link HTTPS direto para um arquivo de vídeo MP4, WebM ou OGG. O vídeo será reproduzido automaticamente sem som e ficará repetindo em loop.</p>}
-        <Label htmlFor="publication-media">{mediaMode === "canva" ? "Link do site Canva + links das imagens (um por linha)" : mediaMode === "video" ? "Link direto do vídeo" : mediaMode === "image" ? "Endereço público da imagem" : "Endereços das imagens (um por linha)"}</Label>
-        <Textarea id="publication-media" value={mediaUrlsText} onChange={(event) => setMediaUrlsText(event.target.value)} rows={mediaMode === "image" || mediaMode === "video" ? 2 : 5} placeholder={mediaMode === "canva" ? "https://seusite.my.canva.site\nhttps://exemplo.com/imagem-1.jpg\nhttps://exemplo.com/imagem-2.jpg" : mediaMode === "video" ? "https://exemplo.com/video.mp4" : "https://exemplo.com/imagem-1.jpg\nhttps://exemplo.com/imagem-2.jpg"} />
+        {mediaMode === "video" && <div className="space-y-2"><p className="text-xs text-muted-foreground">Envie um arquivo MP4 ou WebM de até 20 MB diretamente pelo site. O arquivo será armazenado para todos os funcionários. O vídeo será reproduzido automaticamente, sem som e em loop. Se preferir, você também pode usar um link HTTPS direto.</p><Label htmlFor="publication-video-file">Arquivo de vídeo (MP4/WebM, até 20 MB)</Label><Input id="publication-video-file" type="file" accept="video/mp4,video/webm,.mp4,.webm" disabled={busy} onChange={(event) => { const file = event.target.files?.[0] ?? null; setVideoFile(file); if (file) setMediaUrlsText(""); }} /><p className="text-xs text-muted-foreground">{videoFile ? `Selecionado: ${videoFile.name} (${(videoFile.size / 1024 / 1024).toFixed(1)} MB)` : "Nenhum arquivo novo selecionado."}</p></div>}
+        {!(mediaMode === "video" && videoFile) && <><Label htmlFor="publication-media">{mediaMode === "canva" ? "Link do site Canva + links das imagens (um por linha)" : mediaMode === "video" ? "Link direto do vídeo (opcional se enviar arquivo)" : mediaMode === "image" ? "Endereço público da imagem" : "Endereços das imagens (um por linha)"}</Label>
+        <Textarea id="publication-media" value={mediaUrlsText} onChange={(event) => { setMediaUrlsText(event.target.value); if (mediaMode === "video") setVideoFile(null); }} rows={mediaMode === "image" || mediaMode === "video" ? 2 : 5} placeholder={mediaMode === "canva" ? "https://seusite.my.canva.site\nhttps://exemplo.com/imagem-1.jpg\nhttps://exemplo.com/imagem-2.jpg" : mediaMode === "video" ? "https://exemplo.com/video.mp4" : "https://exemplo.com/imagem-1.jpg\nhttps://exemplo.com/imagem-2.jpg"} /></>}
         {mediaMode === "image" && <p className="text-xs text-muted-foreground">Use um link público direto de imagem. Links compartilhados do Google Drive são convertidos quando possível.</p>}
         {mediaMode === "gallery" && <p className="text-xs text-muted-foreground">Galeria já existente nesta publicação. Para novas publicações, escolha uma imagem ou Vídeo Loop.</p>}
         <div className="flex flex-wrap gap-2">{mediaUrlsText.split(/\n|,/).map((url) => url.trim()).filter((url) => /^https?:\/\//i.test(url)).map((url, index) => {
