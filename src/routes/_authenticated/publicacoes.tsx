@@ -39,12 +39,12 @@ function getGoogleSlidesEmbedUrl(value: string): string | null {
     // Published presentations use /presentation/d/e/ID/pub, unlike regular slides.
     const publishedId = url.pathname.match(/\/presentation\/(?:u\/\d+\/)?d\/e\/([a-zA-Z0-9_-]+)/)?.[1];
     if (publishedId) {
-      return "https://docs.google.com/presentation/d/e/" + publishedId + "/embed?start=false&loop=false&delayms=3000";
+      return "https://docs.google.com/presentation/d/e/" + publishedId + "/embed?start=true&loop=true&delayms=3000";
     }
 
     const presentationId = url.pathname.match(/\/presentation\/(?:u\/\d+\/)?d\/([a-zA-Z0-9_-]+)/)?.[1];
     if (!presentationId || presentationId === "e") return null;
-    return "https://docs.google.com/presentation/d/" + presentationId + "/embed?start=false&loop=false&delayms=3000";
+    return "https://docs.google.com/presentation/d/" + presentationId + "/embed?start=true&loop=true&delayms=3000";
   } catch {
     return null;
   }
