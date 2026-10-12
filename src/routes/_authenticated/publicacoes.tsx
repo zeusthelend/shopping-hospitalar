@@ -31,20 +31,27 @@ type Publication = {
   media_urls: string[] | null;
 };
 
+function isGoogleSlidesUrl(value: string): boolean {
+  try {
+    const url = new URL(value.trim());
+    return url.hostname === "docs.google.com" && /\/presentation\//.test(url.pathname);
+  } catch {
+    return false;
+  }
+}
+
 function getGoogleSlidesEmbedUrl(value: string): string | null {
   try {
     const url = new URL(value.trim());
     if (url.hostname !== "docs.google.com") return null;
 
-    // Published presentations use /presentation/d/e/ID/pub, unlike regular slides.
-    const publishedId = url.pathname.match(/\/presentation\/(?:u\/\d+\/)?d\/e\/([a-zA-Z0-9_-]+)/)?.[1];
-    if (publishedId) {
-      return "https://docs.google.com/presentation/d/e/" + publishedId + "/embed?start=true&loop=true&delayms=3000&rm=minimal";
-    }
+    // Only embed published-to-web presentations. Regular /d/ID/edit and
+    // sharing links can expose Google's own controls to employees.
+    const publishedMatch = url.pathname.match(/\/presentation\/(?:u\/\d+\/)?d\/e\/([a-zA-Z0-9_-]+)\/(?:pub|embed)(?:\/|$)/);
+    if (!publishedMatch) return null;
 
-    const presentationId = url.pathname.match(/\/presentation\/(?:u\/\d+\/)?d\/([a-zA-Z0-9_-]+)/)?.[1];
-    if (!presentationId || presentationId === "e") return null;
-    return "https://docs.google.com/presentation/d/" + presentationId + "/embed?start=true&loop=true&delayms=3000&rm=minimal";
+    return "https://docs.google.com/presentation/d/e/" + publishedMatch[1] +
+      "/embed?start=true&loop=true&delayms=3000&rm=minimal";
   } catch {
     return null;
   }
@@ -179,7 +186,9 @@ function Page() {
           const embedUrl = getGoogleSlidesEmbedUrl(url);
           return embedUrl
             ? <iframe key={url + index} src={embedUrl} title={"Prévia da apresentação " + (index + 1)} className="h-36 w-64 rounded-lg border bg-muted" allowFullScreen />
-            : <img key={url + index} src={normalizeImageUrl(url)} alt={"Prévia " + (index + 1)} className="max-h-36 rounded-lg border object-contain" onError={(event) => { event.currentTarget.style.display = "none"; }} />;
+            : isGoogleSlidesUrl(url)
+              ? <div key={url + index} className="flex h-36 w-64 items-center justify-center rounded-lg border bg-muted p-3 text-center text-xs text-muted-foreground">Este link não é de publicação na Web. No Google Slides, use Arquivo → Compartilhar → Publicar na Web e cole o link publicado.</div>
+              : <img key={url + index} src={normalizeImageUrl(url)} alt={"Prévia " + (index + 1)} className="max-h-36 rounded-lg border object-contain" onError={(event) => { event.currentTarget.style.display = "none"; }} />;
         })}</div>
       </>}</div>
       <div className="flex gap-2"><Button type="submit" disabled={busy}><Save className="mr-2 h-4 w-4" />{busy ? "Salvando..." : editing ? "Salvar alterações" : "Publicar"}</Button><Button type="button" variant="outline" onClick={reset}>Cancelar</Button></div>
@@ -197,9 +206,10 @@ function Page() {
                 return embedUrl
                   ? <div key={url + index} className={urls.length > 1 ? "w-[85%] shrink-0 snap-center" : "w-full"}>
                     <iframe src={embedUrl} title={publication.title + " — apresentação " + (index + 1)} loading="lazy" allowFullScreen referrerPolicy="strict-origin-when-cross-origin" className={urls.length > 1 ? "h-[420px] w-full rounded-lg border bg-muted" : "h-[420px] w-full border-0 bg-muted"} />
-                    
                   </div>
-                  : <img key={url + index} src={normalizeImageUrl(url)} alt={publication.title + " — imagem " + (index + 1)} loading="lazy" className={urls.length > 1 ? "max-h-[420px] w-[85%] shrink-0 snap-center rounded-lg bg-muted object-contain" : "max-h-[420px] w-full object-contain bg-muted"} onError={(event) => { event.currentTarget.style.display = "none"; }} />;
+                  : isGoogleSlidesUrl(url)
+                    ? <div key={url + index} className={urls.length > 1 ? "flex min-h-[240px] w-[85%] shrink-0 snap-center items-center justify-center rounded-lg border bg-muted p-6 text-center text-sm text-muted-foreground" : "flex min-h-[240px] w-full items-center justify-center border bg-muted p-6 text-center text-sm text-muted-foreground"}>Esta apresentação ainda usa um link de edição/compartilhamento. Para exibi-la sem os controles do Google, o administrador precisa publicar no Google Slides pela opção Arquivo → Compartilhar → Publicar na Web e atualizar esta publicação com o link publicado.</div>
+                    : <img key={url + index} src={normalizeImageUrl(url)} alt={publication.title + " — imagem " + (index + 1)} loading="lazy" className={urls.length > 1 ? "max-h-[420px] w-[85%] shrink-0 snap-center rounded-lg bg-muted object-contain" : "max-h-[420px] w-full object-contain bg-muted"} onError={(event) => { event.currentTarget.style.display = "none"; }} />;
               })}
             </div>
             {urls.length > 1 && <div className="flex items-center justify-center gap-1 pb-3 text-xs text-muted-foreground"><ImageIcon className="h-3 w-3" />{urls.length} imagens · deslize ou use as setas</div>}
