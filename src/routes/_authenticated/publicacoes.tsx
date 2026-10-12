@@ -53,20 +53,12 @@ function isCanvaSiteUrl(value: string): boolean {
   }
 }
 
-function getGoogleSlidesEmbedUrl(value: string): string | null {
+function isVideoUrl(value: string): boolean {
   try {
     const url = new URL(value.trim());
-    if (url.hostname !== "docs.google.com") return null;
-
-    // Only embed published-to-web presentations. Regular /d/ID/edit and
-    // sharing links can expose Google's own controls to employees.
-    const publishedMatch = url.pathname.match(/\/presentation\/(?:u\/\d+\/)?d\/e\/([a-zA-Z0-9_-]+)\/(?:pub|embed)(?:\/|$)/);
-    if (!publishedMatch) return null;
-
-    return "https://docs.google.com/presentation/d/e/" + publishedMatch[1] +
-      "/embed?start=true&loop=true&delayms=3000&rm=minimal";
+    return url.protocol === "https:" && /\\.(mp4|webm|ogg)(?:$|[?#])/i.test(url.pathname + url.search);
   } catch {
-    return null;
+    return false;
   }
 }
 
@@ -84,7 +76,7 @@ function Page() {
   const [editing, setEditing] = useState<Publication | null>(null);
   const [title, setTitle] = useState("");
   const [body, setBody] = useState("");
-  const [mediaMode, setMediaMode] = useState<"text" | "image" | "slides" | "canva">("text");
+  const [mediaMode, setMediaMode] = useState<"text" | "image" | "video" | "gallery" | "canva">("text");
   const [mediaUrlsText, setMediaUrlsText] = useState("");
   const [busy, setBusy] = useState(false);
 
@@ -139,7 +131,7 @@ function Page() {
     setTitle(publication.title);
     setBody(publication.body);
     const urls = publication.media_urls?.length ? publication.media_urls : (publication.image_url ? [publication.image_url] : []);
-    setMediaMode(urls.length > 0 && isCanvaSiteUrl(urls[0]) ? "canva" : urls.length > 1 ? "slides" : urls.length === 1 ? "image" : "text");
+    setMediaMode(urls.length > 0 && isCanvaSiteUrl(urls[0]) ? "canva" : urls.length > 0 && isVideoUrl(urls[0]) ? "video" : urls.length > 1 ? "gallery" : urls.length === 1 ? "image" : "text");
     setMediaUrlsText(urls.join("\n"));
     setFormOpen(true);
   }
@@ -150,10 +142,12 @@ function Page() {
     if (!title.trim() || !body.trim()) { toast.error("Preencha o título e o texto da publicação."); return; }
     const urls = mediaMode === "text" ? [] : mediaUrlsText.split(/\n|,/).map((url) => url.trim()).filter(Boolean);
     if (mediaMode !== "text" && !urls.length) { toast.error(mediaMode === "canva" ? "Adicione o link público do site Canva." : "Adicione ao menos um endereço de imagem."); return; }
+    if (mediaMode === "video" && (urls.length !== 1 || !isVideoUrl(urls[0]))) { toast.error("Adicione um único link HTTPS direto para um vídeo MP4, WebM ou OGG."); return; }
     if (mediaMode === "canva" && (!urls.length || !isCanvaSiteUrl(urls[0]))) { toast.error("O primeiro endereço precisa ser o link HTTPS público do site Canva (canva.site)."); return; }
     if (mediaMode === "canva" && urls.slice(1).some((url) => !/^https:\/\//i.test(url))) { toast.error("Os links das imagens adicionais precisam começar com https://."); return; }
     if (urls.some((url) => !/^https?:\/\//i.test(url))) { toast.error("Os endereços das imagens devem começar com http:// ou https://."); return; }
     if (mediaMode === "image" && urls.length > 1) { toast.error("No modo Uma imagem, informe somente um endereço."); return; }
+    if (mediaMode === "video" && urls.some((url) => !/^https:\/\//i.test(url))) { toast.error("O vídeo precisa usar um endereço HTTPS."); return; }
     setBusy(true);
     try {
       const values = { title: title.trim(), body: body.trim(), image_url: urls[0] ?? null, media_urls: urls, author_id: me?.profile?.id ?? null };
@@ -182,7 +176,7 @@ function Page() {
   }
 
   return <>
-    <PageHeader title="Publicações" subtitle="Novidades, imagens e galerias de slides da empresa." />
+    <PageHeader title="Publicações" subtitle="Novidades, imagens, vídeos em loop e comunicados da empresa." />
     {canManage && !formOpen && <div className="mb-5 flex justify-end"><Button onClick={() => { reset(); setFormOpen(true); }}><Plus className="mr-2 h-4 w-4" />Nova publicação</Button></div>}
     {canManage && formOpen && <form onSubmit={(event) => void save(event)} className="mb-6 space-y-4 rounded-xl border bg-card p-5 shadow-card">
       <div className="flex items-center justify-between"><h2 className="font-bold">{editing ? "Editar publicação" : "Criar publicação"}</h2><Button type="button" variant="ghost" size="icon" onClick={reset} aria-label="Cancelar"><X /></Button></div>
@@ -191,22 +185,21 @@ function Page() {
       <div className="space-y-2"><Label>Formato</Label><div className="flex flex-wrap gap-2">
         <Button type="button" variant={mediaMode === "text" ? "default" : "outline"} onClick={() => setMediaMode("text")}>Somente texto</Button>
         <Button type="button" variant={mediaMode === "image" ? "default" : "outline"} onClick={() => setMediaMode("image")}>Uma imagem</Button>
-        <Button type="button" variant={mediaMode === "slides" ? "default" : "outline"} onClick={() => setMediaMode("slides")}>Slides / galeria</Button>
+        <Button type="button" variant={mediaMode === "video" ? "default" : "outline"} onClick={() => setMediaMode("video")}>Vídeo Loop</Button>
         <Button type="button" variant={mediaMode === "canva" ? "default" : "outline"} onClick={() => setMediaMode("canva")}>Site do Canva</Button>
       </div>
       {mediaMode !== "text" && <>
         {mediaMode === "canva" && <p className="text-xs text-muted-foreground">Cole primeiro o link HTTPS do site público do Canva. Para exibir imagens mesmo quando o Canva bloquear a incorporação, adicione abaixo, uma por linha, links HTTPS diretos das imagens públicas usadas no site. O primeiro endereço deve ser o site; os demais serão exibidos como galeria. Links de edição não são aceitos.</p>}
-        <Label htmlFor="publication-media">{mediaMode === "canva" ? "Link do site Canva + links das imagens (um por linha)" : mediaMode === "image" ? "Endereço público da imagem" : "Endereços das imagens (um por linha, na ordem dos slides)"}</Label>
-        <Textarea id="publication-media" value={mediaUrlsText} onChange={(event) => setMediaUrlsText(event.target.value)} rows={mediaMode === "image" ? 2 : 5} placeholder={mediaMode === "canva" ? "https://seusite.my.canva.site\nhttps://exemplo.com/imagem-1.jpg\nhttps://exemplo.com/imagem-2.jpg" : "https://exemplo.com/imagem-1.jpg\nhttps://exemplo.com/imagem-2.jpg"} />
-        {mediaMode !== "canva" && <p className="text-xs text-muted-foreground">Use links públicos diretos de imagens ou uma apresentação do Google Slides publicada na Web. Links compartilhados do Google Drive são convertidos quando possível. A galeria avança automaticamente entre os itens.</p>}
+        {mediaMode === "video" && <p className="text-xs text-muted-foreground">Cole um link HTTPS direto para um arquivo de vídeo MP4, WebM ou OGG. O vídeo será reproduzido automaticamente sem som e ficará repetindo em loop.</p>}
+        <Label htmlFor="publication-media">{mediaMode === "canva" ? "Link do site Canva + links das imagens (um por linha)" : mediaMode === "video" ? "Link direto do vídeo" : mediaMode === "image" ? "Endereço público da imagem" : "Endereços das imagens (um por linha)"}</Label>
+        <Textarea id="publication-media" value={mediaUrlsText} onChange={(event) => setMediaUrlsText(event.target.value)} rows={mediaMode === "image" || mediaMode === "video" ? 2 : 5} placeholder={mediaMode === "canva" ? "https://seusite.my.canva.site\nhttps://exemplo.com/imagem-1.jpg\nhttps://exemplo.com/imagem-2.jpg" : mediaMode === "video" ? "https://exemplo.com/video.mp4" : "https://exemplo.com/imagem-1.jpg\nhttps://exemplo.com/imagem-2.jpg"} />
+        {mediaMode === "image" && <p className="text-xs text-muted-foreground">Use um link público direto de imagem. Links compartilhados do Google Drive são convertidos quando possível.</p>}
+        {mediaMode === "gallery" && <p className="text-xs text-muted-foreground">Galeria já existente nesta publicação. Para novas publicações, escolha uma imagem ou Vídeo Loop.</p>}
         <div className="flex flex-wrap gap-2">{mediaUrlsText.split(/\n|,/).map((url) => url.trim()).filter((url) => /^https?:\/\//i.test(url)).map((url, index) => {
-          const embedUrl = getGoogleSlidesEmbedUrl(url);
-          return isCanvaSiteUrl(url)
-            ? <div key={url + index} className="w-full space-y-2"><iframe src={url} title="Prévia do site Canva" className="h-64 w-full rounded-lg border bg-muted" loading="lazy" referrerPolicy="strict-origin-when-cross-origin" sandbox="allow-scripts allow-same-origin allow-forms allow-popups" /><a href={url} target="_blank" rel="noopener noreferrer" className="text-sm font-medium text-primary underline">Abrir site público do Canva em nova aba</a></div>
-            : embedUrl
-            ? <iframe key={url + index} src={embedUrl} title={"Prévia da apresentação " + (index + 1)} className="h-36 w-64 rounded-lg border bg-muted" allowFullScreen />
-            : isGoogleSlidesUrl(url)
-              ? <div key={url + index} className="flex h-36 w-64 items-center justify-center rounded-lg border bg-muted p-3 text-center text-xs text-muted-foreground">Este link não é de publicação na Web. No Google Slides, use Arquivo → Compartilhar → Publicar na Web e cole o link publicado.</div>
+          return isVideoUrl(url)
+            ? <video key={url + index} src={url} className="max-h-48 w-full rounded-lg border bg-muted" autoPlay muted loop playsInline controls />
+            : isCanvaSiteUrl(url)
+              ? <div key={url + index} className="w-full space-y-2"><iframe src={url} title="Prévia do site Canva" className="h-64 w-full rounded-lg border bg-muted" loading="lazy" referrerPolicy="strict-origin-when-cross-origin" sandbox="allow-scripts allow-same-origin allow-forms allow-popups" /><a href={url} target="_blank" rel="noopener noreferrer" className="text-sm font-medium text-primary underline">Abrir site público do Canva em nova aba</a></div>
               : <img key={url + index} src={normalizeImageUrl(url)} alt={"Prévia " + (index + 1)} className="max-h-36 rounded-lg border object-contain" onError={(event) => { const image = event.currentTarget; const fallback = document.createElement("div"); fallback.className = "flex min-h-28 w-full items-center justify-center rounded-lg border bg-muted p-4 text-center text-sm text-muted-foreground"; fallback.textContent = "Imagem indisponível. Confira se o link é público e aponta diretamente para um arquivo de imagem."; image.replaceWith(fallback); }} />;
         })}</div>
       </>}</div>
@@ -221,22 +214,19 @@ function Page() {
             {urls.length > 1 && <div className="absolute inset-x-2 top-1/2 z-10 flex -translate-y-1/2 justify-between"><Button variant="secondary" size="icon" aria-label="Slide anterior" onClick={() => document.getElementById("publication-gallery-" + publication.id)?.scrollBy({ left: -320, behavior: "smooth" })}><ChevronLeft /></Button><Button variant="secondary" size="icon" aria-label="Próximo slide" onClick={() => document.getElementById("publication-gallery-" + publication.id)?.scrollBy({ left: 320, behavior: "smooth" })}><ChevronRight /></Button></div>}
             <div id={"publication-gallery-" + publication.id} data-auto-gallery={urls.length > 1 ? "true" : undefined} className={urls.length > 1 ? "flex snap-x snap-mandatory gap-3 overflow-x-auto scroll-smooth p-3" : "p-0"}>
               {urls.map((url, index) => {
-                const embedUrl = getGoogleSlidesEmbedUrl(url);
-                return isCanvaSiteUrl(url)
-                  ? <div key={url + index} className="w-full p-4">
-                    <div className="rounded-xl border bg-card p-6 text-center">
-                      <p className="mb-2 text-base font-semibold">{publication.title}</p>
-                      <p className="mb-4 text-sm text-muted-foreground">Esta publicação contém um site externo do Canva. Para evitar o erro de conexão recusada, abra o site em uma nova aba.</p>
-                      <a href={url} target="_blank" rel="noopener noreferrer" className="inline-flex items-center justify-center rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:opacity-90">Abrir site do Canva</a>
-                      <p className="mt-3 text-xs text-muted-foreground">Para mostrar as imagens diretamente nesta publicação, o administrador deve adicionar os links públicos diretos das imagens ao editar a publicação.</p>
-                    </div>
-                  </div>
-                  : embedUrl
+                return isVideoUrl(url)
                   ? <div key={url + index} className={urls.length > 1 ? "w-[85%] shrink-0 snap-center" : "w-full"}>
-                    <iframe src={embedUrl} title={publication.title + " — apresentação " + (index + 1)} loading="lazy" allowFullScreen tabIndex={canManage ? 0 : -1} referrerPolicy="strict-origin-when-cross-origin" className={(urls.length > 1 ? "h-[420px] w-full rounded-lg border bg-muted" : "h-[420px] w-full border-0 bg-muted") + (canManage ? "" : " pointer-events-none")} />
+                    <video src={url} title={publication.title + " — vídeo em loop"} autoPlay muted loop playsInline controls preload="metadata" className="max-h-[560px] w-full bg-black object-contain" />
                   </div>
-                  : isGoogleSlidesUrl(url)
-                    ? <div key={url + index} className={urls.length > 1 ? "flex min-h-[240px] w-[85%] shrink-0 snap-center items-center justify-center rounded-lg border bg-muted p-6 text-center text-sm text-muted-foreground" : "flex min-h-[240px] w-full items-center justify-center border bg-muted p-6 text-center text-sm text-muted-foreground"}>Esta apresentação ainda usa um link de edição/compartilhamento. Para exibi-la sem os controles do Google, o administrador precisa publicar no Google Slides pela opção Arquivo → Compartilhar → Publicar na Web e atualizar esta publicação com o link publicado.</div>
+                  : isCanvaSiteUrl(url)
+                    ? <div key={url + index} className="w-full p-4">
+                      <div className="rounded-xl border bg-card p-6 text-center">
+                        <p className="mb-2 text-base font-semibold">{publication.title}</p>
+                        <p className="mb-4 text-sm text-muted-foreground">Esta publicação contém um site externo do Canva. Para evitar o erro de conexão recusada, abra o site em uma nova aba.</p>
+                        <a href={url} target="_blank" rel="noopener noreferrer" className="inline-flex items-center justify-center rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:opacity-90">Abrir site do Canva</a>
+                        <p className="mt-3 text-xs text-muted-foreground">Para mostrar as imagens diretamente nesta publicação, o administrador deve adicionar os links públicos diretos das imagens ao editar a publicação.</p>
+                      </div>
+                    </div>
                     : <img key={url + index} src={normalizeImageUrl(url)} alt={publication.title + " — imagem " + (index + 1)} loading="lazy" className={urls.length > 1 ? "max-h-[420px] w-[85%] shrink-0 snap-center rounded-lg bg-muted object-contain" : "max-h-[420px] w-full object-contain bg-muted"} onError={(event) => { const image = event.currentTarget; const fallback = document.createElement("div"); fallback.className = "flex min-h-28 w-full items-center justify-center rounded-lg border bg-muted p-4 text-center text-sm text-muted-foreground"; fallback.textContent = "Imagem indisponível. Confira se o link é público e aponta diretamente para um arquivo de imagem."; image.replaceWith(fallback); }} />;
               })}
             </div>
