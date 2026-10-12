@@ -36,7 +36,10 @@ jobs:
 
       - name: Run lint
         # The repository has existing formatting-only failures outside this change.
-        run: npx eslint src/components/employee-access-management.tsx src/routes/_authenticated/admin.tsx src/routes/_authenticated/route.tsx src/integrations/supabase/types.ts --rule "prettier/prettier: off"
+        run: >-
+          npx eslint src/components/employee-access-management.tsx
+          src/routes/_authenticated/admin.tsx src/routes/_authenticated/route.tsx
+          src/integrations/supabase/types.ts --rule 'prettier/prettier: off'
 
       - name: Run tests
         run: npm test
