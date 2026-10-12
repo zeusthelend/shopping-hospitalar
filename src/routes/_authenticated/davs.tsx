@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { AlertTriangle, FilePlus2, Paperclip, Search, Trash2, TrendingUp, Trophy, CheckCircle2, Clock3, XCircle } from "lucide-react";
+import { AlertTriangle, FilePlus2, Paperclip, Search, Trash2, TrendingUp, Trophy, CheckCircle2, Clock3, XCircle, Pencil } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
@@ -33,12 +33,13 @@ import {
 } from "@/components/ui/dialog";
 
 type DavStatus = "aberto" | "em_andamento" | "concluido" | "cancelado";
+type DavCategory = "geral" | "prefeitura" | "reservado";
 type DavAttachment = { id: string; file_path: string; file_name: string };
 const statusLabel: Record<DavStatus, string> = {
   aberto: "Aberto",
   em_andamento: "Em andamento",
   concluido: "Concluído",
-  cancelado: "Cancelado",
+  cancelado: "Desistiu",
 };
 
 export const Route = createFileRoute("/_authenticated/davs")({
@@ -57,6 +58,7 @@ export const Route = createFileRoute("/_authenticated/davs")({
 
 function DavsPage() {
   const [q, setQ] = useState("");
+  const [categoryTab, setCategoryTab] = useState<"todos" | DavCategory>("todos");
   const { data: me } = useMe();
   const userId = me?.profile?.id;
   const { data: canDeleteDavs = false } = useQuery({
@@ -97,6 +99,7 @@ function DavsPage() {
   });
   const names = new Map(people.map((person) => [person.id, person.full_name]));
   const shown = data.filter((dav) =>
+    (categoryTab === "todos" || (dav.category ?? "geral") === categoryTab) &&
     `${dav.dav_number} ${dav.client_name} ${names.get(dav.seller_id) ?? ""}`
       .toLowerCase()
       .includes(q.toLowerCase()),
@@ -201,6 +204,9 @@ function DavsPage() {
           placeholder="Buscar DAV, cliente ou vendedor"
         />
       </div>
+      <div className="mb-4 flex flex-wrap gap-2" role="tablist" aria-label="Categorias de DAV">
+        {([{ value: "todos", label: `Todos (${data.length})` }, { value: "geral", label: `DAVs gerais (${data.filter((d) => (d.category ?? "geral") === "geral").length})` }, { value: "prefeitura", label: `Prefeituras (${data.filter((d) => d.category === "prefeitura").length})` }, { value: "reservado", label: `Reservados (${data.filter((d) => d.category === "reservado").length})` }] as const).map((tab) => <Button key={tab.value} type="button" size="sm" variant={categoryTab === tab.value ? "default" : "outline"} onClick={() => setCategoryTab(tab.value)}>{tab.label}</Button>)}
+      </div>
       {shown.length ? (
         <div className="space-y-3">
           {shown.map((dav) => {
@@ -233,9 +239,8 @@ function DavsPage() {
                     >
                       Vence em {new Date(dav.due_at).toLocaleString("pt-BR")}
                     </time>
-                    {canDeleteDavs && (
-                      <DeleteDavButton dav={dav} />
-                    )}
+                    <DavEditDialog dav={dav} canManage={!!me?.canManage} sellers={people} />
+                    {canDeleteDavs && <DeleteDavButton dav={dav} />}
                   </div>
                 </div>
                 {dav.description && <p className="mt-3 text-sm">{dav.description}</p>}
@@ -259,6 +264,29 @@ function DavsPage() {
       )}
     </>
   );
+}
+
+type DavEditRow = { id: string; dav_number: string; client_name: string; description: string | null; dav_value: number | null; due_at: string; status: string; category?: string | null; seller_id: string; };
+
+function DavEditDialog({ dav, canManage, sellers }: { dav: DavEditRow; canManage: boolean; sellers: Array<{ id: string; full_name: string }> }) {
+  const qc = useQueryClient();
+  const [open, setOpen] = useState(false);
+  const [busy, setBusy] = useState(false);
+  async function save(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault(); setBusy(true);
+    const fd = new FormData(event.currentTarget);
+    try {
+      const update = { client_name: String(fd.get("client")).trim().slice(0, 180), description: String(fd.get("description")).trim().slice(0, 2000), dav_value: fd.get("value") === "" ? null : Number(fd.get("value")), due_at: new Date(String(fd.get("due_at"))).toISOString(), status: String(fd.get("status")) as DavStatus, category: String(fd.get("category")) as DavCategory, ...(canManage && fd.get("seller") ? { seller_id: String(fd.get("seller")) } : {}) };
+      if (!update.client_name || !Number.isFinite(new Date(update.due_at).getTime())) throw new Error("Informe cliente e vencimento válidos.");
+      const { error } = await supabase.from("davs").update(update).eq("id", dav.id);
+      if (error) throw error;
+      await qc.invalidateQueries({ queryKey: ["davs"] });
+      toast.success("DAV atualizado."); setOpen(false);
+    } catch (error) { toast.error(error instanceof Error ? error.message : "Não foi possível atualizar o DAV."); }
+    finally { setBusy(false); }
+  }
+  const localDue = dav.due_at ? new Date(dav.due_at).toISOString().slice(0, 16) : "";
+  return <Dialog open={open} onOpenChange={setOpen}><DialogTrigger asChild><Button variant="outline" size="sm"><Pencil className="mr-1 h-3.5 w-3.5" />Editar DAV</Button></DialogTrigger><DialogContent className="max-w-xl"><DialogHeader><DialogTitle>Editar {dav.dav_number}</DialogTitle><DialogDescription>Atualize o resultado da venda e os dados do DAV.</DialogDescription></DialogHeader><form onSubmit={save} className="space-y-4"><Field label="Cliente ou empresa"><Input name="client" required maxLength={180} defaultValue={dav.client_name} /></Field><Field label="Vencimento"><Input name="due_at" type="datetime-local" required defaultValue={localDue} /></Field><Field label="Valor da DAV (R$)"><Input name="value" type="number" min="0" step="0.01" defaultValue={dav.dav_value ?? ""} /></Field><Field label="Situação da venda"><Select name="status" defaultValue={dav.status}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="aberto">Potencial / aberta</SelectItem><SelectItem value="em_andamento">Em andamento</SelectItem><SelectItem value="cancelado">Desistiu</SelectItem><SelectItem value="concluido">Venda concluída</SelectItem></SelectContent></Select></Field><Field label="Categoria"><Select name="category" defaultValue={dav.category ?? "geral"}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="geral">DAV geral</SelectItem><SelectItem value="prefeitura">Prefeitura</SelectItem><SelectItem value="reservado">Reservado</SelectItem></SelectContent></Select></Field>{canManage && <Field label="Vendedor"><Select name="seller" defaultValue={dav.seller_id}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent>{sellers.map((seller) => <SelectItem key={seller.id} value={seller.id}>{seller.full_name}</SelectItem>)}</SelectContent></Select></Field>}<Field label="Descrição"><Textarea name="description" maxLength={2000} defaultValue={dav.description ?? ""} /></Field><Button className="w-full" disabled={busy}>{busy ? "Salvando..." : "Salvar alterações"}</Button></form></DialogContent></Dialog>;
 }
 
 function DeleteDavButton({
@@ -368,6 +396,7 @@ function DavDialog({
           dav_value: fd.get("value") === "" ? null : Number(fd.get("value")),
           due_at: new Date(due).toISOString(),
           created_by: userId,
+          category: String(fd.get("category") || "geral") as DavCategory,
         })
         .select("id")
         .single();
@@ -427,6 +456,7 @@ function DavDialog({
             </Field>
           </div>
           <Field label="Valor da DAV (R$)"><Input name="value" type="number" min="0" step="0.01" inputMode="decimal" placeholder="0,00" /></Field>
+          <Field label="Categoria do DAV"><Select name="category" defaultValue="geral"><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="geral">DAV geral</SelectItem><SelectItem value="prefeitura">Prefeitura</SelectItem><SelectItem value="reservado">Reservado</SelectItem></SelectContent></Select></Field>
           <Field label="Cliente ou empresa">
             <Input name="client" required maxLength={180} />
           </Field>
