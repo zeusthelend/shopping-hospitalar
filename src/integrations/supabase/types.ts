@@ -745,6 +745,7 @@ export type Database = {
           created_at: string
           id: string
           image_url: string | null
+          media_urls: string[]
           title: string
         }
         Insert: {
@@ -753,6 +754,7 @@ export type Database = {
           created_at?: string
           id?: string
           image_url?: string | null
+          media_urls?: string[]
           title: string
         }
         Update: {
