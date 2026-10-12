@@ -39,12 +39,12 @@ function getGoogleSlidesEmbedUrl(value: string): string | null {
     // Published presentations use /presentation/d/e/ID/pub, unlike regular slides.
     const publishedId = url.pathname.match(/\/presentation\/(?:u\/\d+\/)?d\/e\/([a-zA-Z0-9_-]+)/)?.[1];
     if (publishedId) {
-      return "https://docs.google.com/presentation/d/e/" + publishedId + "/embed?start=true&loop=true&delayms=3000";
+      return "https://docs.google.com/presentation/d/e/" + publishedId + "/embed?start=true&loop=true&delayms=3000&rm=minimal";
     }
 
     const presentationId = url.pathname.match(/\/presentation\/(?:u\/\d+\/)?d\/([a-zA-Z0-9_-]+)/)?.[1];
     if (!presentationId || presentationId === "e") return null;
-    return "https://docs.google.com/presentation/d/" + presentationId + "/embed?start=true&loop=true&delayms=3000";
+    return "https://docs.google.com/presentation/d/" + presentationId + "/embed?start=true&loop=true&delayms=3000&rm=minimal";
   } catch {
     return null;
   }
@@ -197,7 +197,7 @@ function Page() {
                 return embedUrl
                   ? <div key={url + index} className={urls.length > 1 ? "w-[85%] shrink-0 snap-center" : "w-full"}>
                     <iframe src={embedUrl} title={publication.title + " — apresentação " + (index + 1)} loading="lazy" allowFullScreen referrerPolicy="strict-origin-when-cross-origin" className={urls.length > 1 ? "h-[420px] w-full rounded-lg border bg-muted" : "h-[420px] w-full border-0 bg-muted"} />
-                    <p className="mt-2 text-xs text-muted-foreground">Apresentação incorporada para visualização. Para proteger a conta do proprietário, o link de edição não é exibido.</p>
+                    
                   </div>
                   : <img key={url + index} src={normalizeImageUrl(url)} alt={publication.title + " — imagem " + (index + 1)} loading="lazy" className={urls.length > 1 ? "max-h-[420px] w-[85%] shrink-0 snap-center rounded-lg bg-muted object-contain" : "max-h-[420px] w-full object-contain bg-muted"} onError={(event) => { event.currentTarget.style.display = "none"; }} />;
               })}
