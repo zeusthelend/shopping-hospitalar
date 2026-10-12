@@ -3,6 +3,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useRef, useState } from "react";
 import {
   ArrowLeft,
+  Film,
   Bookmark,
   BookmarkCheck,
   Check,
@@ -389,6 +390,9 @@ function Conversation({
   const [reply, setReply] = useState<MessageRow | null>(null);
   const [editing, setEditing] = useState<MessageRow | null>(null);
   const [text, setText] = useState("");
+  const [gifOpen, setGifOpen] = useState(false);
+  const [gifUrl, setGifUrl] = useState("");
+  const [gifSearch, setGifSearch] = useState("");
   const [sending, setSending] = useState(false);
   const [recording, setRecording] = useState(false);
   const [groupProfileOpen, setGroupProfileOpen] = useState(false);
@@ -536,6 +540,7 @@ function Conversation({
   }
   async function send() {
     if (sending || (!text.trim() && !file)) return;
+    if (text.trim().startsWith("GIF:") && !/^GIF:https:\/\//i.test(text.trim())) { toast.error("Use um endereço HTTPS válido para o GIF."); return; }
     setSending(true);
     try {
       if (editing) {
@@ -774,6 +779,7 @@ function Conversation({
           </Button>
         </div>
       )}
+      <Dialog open={gifOpen} onOpenChange={setGifOpen}><DialogContent className="sm:max-w-lg"><DialogHeader><DialogTitle>Enviar GIF</DialogTitle><DialogDescription>Pesquise um GIF e cole o endereço direto do arquivo .gif ou de uma imagem animada HTTPS.</DialogDescription></DialogHeader><div className="space-y-3"><div className="flex gap-2"><Input value={gifSearch} onChange={(e) => setGifSearch(e.target.value)} placeholder="Pesquisar GIFs" /><Button type="button" variant="outline" onClick={() => { const q = encodeURIComponent(gifSearch.trim()); if (q) window.open(`https://tenor.com/search/${q}-gifs`, "_blank", "noopener,noreferrer"); }} disabled={!gifSearch.trim()}>Buscar</Button></div><Input value={gifUrl} onChange={(e) => setGifUrl(e.target.value)} placeholder="https://.../animacao.gif" inputMode="url" /><p className="text-xs text-muted-foreground">Depois de escolher no catálogo, copie o link direto da imagem animada e cole acima.</p>{/^https:\/\//i.test(gifUrl) && <img src={gifUrl} alt="Prévia do GIF" className="max-h-56 max-w-full rounded-md object-contain" onError={(e) => { e.currentTarget.style.display = "none"; }} />}<Button type="button" className="w-full" disabled={!/^https:\/\//i.test(gifUrl)} onClick={() => { setText(`GIF:${gifUrl.trim()}`); setFile(null); setGifOpen(false); setGifUrl(""); }}>Usar este GIF</Button></div></DialogContent></Dialog>
       <div className="border-t p-3 sm:p-4">
         <div className="mx-auto flex max-w-3xl items-end gap-2">
           <label
@@ -788,6 +794,7 @@ function Conversation({
               onChange={(e) => setFile(e.target.files?.[0] ?? null)}
             />
           </label>
+          <Button type="button" size="icon" variant="ghost" disabled={sending || !!file || !!editing} onClick={() => setGifOpen(true)} aria-label="Enviar GIF" title="Enviar GIF"><Film className="h-4 w-4" /></Button>
           <Button
             type="button"
             size="icon"
@@ -958,14 +965,7 @@ function MessageItem({
               <p className="truncate opacity-80">{reply.body}</p>
             </div>
           )}
-          <p
-            className={cn(
-              "whitespace-pre-wrap break-words text-sm",
-              message.deleted_at && "italic opacity-70",
-            )}
-          >
-            {message.body}
-          </p>
+          {message.body?.startsWith("GIF:https://") && !message.deleted_at ? <a href={message.body.slice(4)} target="_blank" rel="noreferrer" className="block"><img src={message.body.slice(4)} alt="GIF enviado no chat" loading="lazy" className="max-h-72 max-w-full rounded-lg object-contain" /></a> : <p className={cn("whitespace-pre-wrap break-words text-sm", message.deleted_at && "italic opacity-70")}>{message.body}</p>}
           {message.attachment_path && <Attachment message={message} />}
           <div className="mt-1 flex items-center justify-end gap-1 text-[10px] opacity-65">
             {message.edited_at && <span>editada</span>}
