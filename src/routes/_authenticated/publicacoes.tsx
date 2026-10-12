@@ -223,7 +223,15 @@ function Page() {
               {urls.map((url, index) => {
                 const embedUrl = getGoogleSlidesEmbedUrl(url);
                 return isCanvaSiteUrl(url)
-                  ? <div key={url + index} className="w-full space-y-2 p-3"><iframe src={url} title={publication.title + " — site Canva"} loading="lazy" referrerPolicy="strict-origin-when-cross-origin" sandbox="allow-scripts allow-same-origin allow-forms allow-popups" className="h-[520px] w-full rounded-lg border bg-muted" /><div className="flex justify-center"><a href={url} target="_blank" rel="noopener noreferrer" className="text-sm font-medium text-primary underline">Abrir site público do Canva em nova aba</a></div><p className="text-center text-xs text-muted-foreground">Se o site não carregar incorporado, use o botão acima. As imagens adicionais informadas pelo administrador aparecem abaixo.</p></div>
+                  ? <div key={url + index} className="w-full space-y-3 p-3">
+                    <div className="rounded-xl border bg-card p-4 text-center">
+                      <p className="mb-2 text-sm font-semibold">{publication.title}</p>
+                      <p className="mb-3 text-xs text-muted-foreground">Site externo do Canva. Se a prévia não carregar aqui, abra o site diretamente pelo link abaixo.</p>
+                      <a href={url} target="_blank" rel="noopener noreferrer" className="inline-flex items-center justify-center rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:opacity-90">Abrir site do Canva</a>
+                    </div>
+                    <iframe src={url} title={publication.title + " — site Canva"} loading="lazy" referrerPolicy="strict-origin-when-cross-origin" sandbox="allow-scripts allow-same-origin allow-forms allow-popups" className="h-[520px] w-full rounded-lg border bg-muted" />
+                    <p className="text-center text-xs text-muted-foreground">As imagens públicas adicionadas pelo administrador aparecem como itens separados na galeria.</p>
+                  </div>
                   : embedUrl
                   ? <div key={url + index} className={urls.length > 1 ? "w-[85%] shrink-0 snap-center" : "w-full"}>
                     <iframe src={embedUrl} title={publication.title + " — apresentação " + (index + 1)} loading="lazy" allowFullScreen tabIndex={canManage ? 0 : -1} referrerPolicy="strict-origin-when-cross-origin" className={(urls.length > 1 ? "h-[420px] w-full rounded-lg border bg-muted" : "h-[420px] w-full border-0 bg-muted") + (canManage ? "" : " pointer-events-none")} />
