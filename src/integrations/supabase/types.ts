@@ -488,7 +488,6 @@ export type Database = {
           created_at: string
           created_by: string
           dav_number: string
-          dav_value?: number | null
           dav_value: number | null
           description: string
           due_at: string
@@ -502,6 +501,7 @@ export type Database = {
           created_at?: string
           created_by: string
           dav_number: string
+          dav_value?: number | null
           description?: string
           due_at: string
           id?: string
@@ -854,8 +854,6 @@ export type Database = {
         Args: { _conversation_id: string; _members: string[] }
         Returns: number
       }
-      ban_employee_with_pin: { Args: { _employee: string }; Returns: string }
-      can_manage_employee_access: { Args: { _user?: string }; Returns: boolean }
       can_delete_davs: { Args: { _user_id: string }; Returns: boolean }
       can_manage_announcements: {
         Args: { _user_id?: string }
@@ -878,7 +876,6 @@ export type Database = {
         }
         Returns: boolean
       }
-      issue_employee_reactivation_pin: { Args: { _employee: string }; Returns: string }
       is_approved_user: { Args: never; Returns: boolean }
       is_chat_admin: {
         Args: { _conversation_id: string; _user_id: string }
@@ -890,7 +887,6 @@ export type Database = {
       }
       is_manager: { Args: { _user_id: string }; Returns: boolean }
       redeem_access_pin: { Args: { _pin: string }; Returns: boolean }
-      redeem_employee_reactivation_pin: { Args: { _pin: string }; Returns: boolean }
       respond_chat_call: {
         Args: { _action: string; _answer?: string; _call: string }
         Returns: undefined
