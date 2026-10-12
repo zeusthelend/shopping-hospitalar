@@ -141,6 +141,13 @@
       "when": 1791850200000,
       "tag": "0019_animated_logo_settings",
       "breakpoints": true
+    },
+    {
+      "idx": 20,
+      "version": "7",
+      "when": 1791828000000,
+      "tag": "0020_admin_only_publication_edits",
+      "breakpoints": true
     }
   ]
 }
