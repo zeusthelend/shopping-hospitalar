@@ -31,7 +31,7 @@ RETURNS boolean LANGUAGE sql STABLE SECURITY DEFINER SET search_path=public AS $
   )
 $$;
 REVOKE ALL ON FUNCTION public.can_manage_employee_access(uuid) FROM public, anon;
-GRANT EXECUTE ON FUNCTION public.can_manage_employee_access(uuid) TO authenticated;
+-- Internal authorization helper; only SECURITY DEFINER RPCs should call it.
 
 -- Keep the existing profile protections, allowing active to change only inside
 -- the authorized PIN workflow below.
