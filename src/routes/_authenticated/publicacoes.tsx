@@ -200,7 +200,7 @@ function Page() {
                 return embedUrl
                   ? <div key={url + index} className={urls.length > 1 ? "w-[85%] shrink-0 snap-center" : "w-full"}>
                     <iframe src={embedUrl} title={publication.title + " — apresentação " + (index + 1)} loading="lazy" allowFullScreen referrerPolicy="strict-origin-when-cross-origin" className={urls.length > 1 ? "h-[420px] w-full rounded-lg border bg-muted" : "h-[420px] w-full border-0 bg-muted"} />
-                    <a href={url} target="_blank" rel="noreferrer" className="mt-2 inline-block text-sm text-primary underline underline-offset-4">Se o slide não carregar, abrir apresentação</a>
+                    <p className="mt-2 text-xs text-muted-foreground">Apresentação incorporada para visualização. Para proteger a conta do proprietário, o link de edição não é exibido.</p>
                   </div>
                   : <img key={url + index} src={normalizeImageUrl(url)} alt={publication.title + " — imagem " + (index + 1)} loading="lazy" className={urls.length > 1 ? "max-h-[420px] w-[85%] shrink-0 snap-center rounded-lg bg-muted object-contain" : "max-h-[420px] w-full object-contain bg-muted"} onError={(event) => { event.currentTarget.style.display = "none"; }} />;
               })}
