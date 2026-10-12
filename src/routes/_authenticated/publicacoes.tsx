@@ -205,7 +205,7 @@ function Page() {
                 const embedUrl = getGoogleSlidesEmbedUrl(url);
                 return embedUrl
                   ? <div key={url + index} className={urls.length > 1 ? "w-[85%] shrink-0 snap-center" : "w-full"}>
-                    <iframe src={embedUrl} title={publication.title + " — apresentação " + (index + 1)} loading="lazy" allowFullScreen referrerPolicy="strict-origin-when-cross-origin" className={urls.length > 1 ? "h-[420px] w-full rounded-lg border bg-muted" : "h-[420px] w-full border-0 bg-muted"} />
+                    <iframe src={embedUrl} title={publication.title + " — apresentação " + (index + 1)} loading="lazy" allowFullScreen tabIndex={canManage ? 0 : -1} referrerPolicy="strict-origin-when-cross-origin" className={(urls.length > 1 ? "h-[420px] w-full rounded-lg border bg-muted" : "h-[420px] w-full border-0 bg-muted") + (canManage ? "" : " pointer-events-none")} />
                   </div>
                   : isGoogleSlidesUrl(url)
                     ? <div key={url + index} className={urls.length > 1 ? "flex min-h-[240px] w-[85%] shrink-0 snap-center items-center justify-center rounded-lg border bg-muted p-6 text-center text-sm text-muted-foreground" : "flex min-h-[240px] w-full items-center justify-center border bg-muted p-6 text-center text-sm text-muted-foreground"}>Esta apresentação ainda usa um link de edição/compartilhamento. Para exibi-la sem os controles do Google, o administrador precisa publicar no Google Slides pela opção Arquivo → Compartilhar → Publicar na Web e atualizar esta publicação com o link publicado.</div>
