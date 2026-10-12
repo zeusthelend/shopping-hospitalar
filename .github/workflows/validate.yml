@@ -1,0 +1,45 @@
+name: Validate application
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main, feat/dav-sales-analytics, feat/employee-ban-pin-recovery]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      # Keep the npm resolver current; npm 10 failed in Arborist while
+      # resolving this repository's dependency tree (edgesOut null).
+      - name: Update npm
+        run: npm install --global npm@11
+
+      - name: Clear npm cache
+        run: npm cache clean --force
+
+      - name: Install dependencies
+        run: npm install --no-audit --no-fund --legacy-peer-deps
+
+      - name: Run lint
+        # Disable only the formatting rule; lint the complete codebase.
+        run: npx eslint . --rule 'prettier/prettier: off'
+
+      - name: Run tests
+        run: npm test
+
+      - name: Build production bundle
+        run: npm run build

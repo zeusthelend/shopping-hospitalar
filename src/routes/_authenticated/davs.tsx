@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { AlertTriangle, FilePlus2, Paperclip, Search, Trash2 } from "lucide-react";
+import { AlertTriangle, FilePlus2, Paperclip, Search, Trash2, TrendingUp, Trophy, CheckCircle2, Clock3, XCircle } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
@@ -83,7 +83,9 @@ function DavsPage() {
     },
   });
   const { data = [] } = useQuery({
-    queryKey: ["davs"],
+    // Isolate cached DAV data by authenticated profile to prevent cross-user cache reuse.
+    queryKey: ["davs", userId],
+    enabled: !!userId,
     queryFn: async () => {
       const { data, error } = await supabase
         .from("davs")
@@ -104,6 +106,28 @@ function DavsPage() {
       !["concluido", "cancelado"].includes(dav.status) && new Date(dav.due_at) < new Date(),
   ).length;
 
+  const totalDavs = data.length;
+  const completedDavs = data.filter((dav) => dav.status === "concluido");
+  const potentialDavs = data.filter((dav) => dav.status === "aberto");
+  const inProgressDavs = data.filter((dav) => dav.status === "em_andamento");
+  const cancelledDavs = data.filter((dav) => dav.status === "cancelado");
+  const completedValue = completedDavs.reduce((sum, dav) => sum + (Number(dav.dav_value) || 0), 0);
+  const formatCurrency = (value: number) => value.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
+  const statusStats = [
+    { label: "Concluídas", count: completedDavs.length, color: "bg-emerald-500", icon: CheckCircle2 },
+    { label: "Potenciais / abertas", count: potentialDavs.length, color: "bg-amber-500", icon: TrendingUp },
+    { label: "Em edição / andamento", count: inProgressDavs.length, color: "bg-blue-500", icon: Clock3 },
+    { label: "Desistências", count: cancelledDavs.length, color: "bg-rose-500", icon: XCircle },
+  ];
+  const maxStatusCount = Math.max(1, ...statusStats.map((item) => item.count));
+  const topClients = Object.values(data.filter((dav) => dav.status === "concluido").reduce<Record<string, { name: string; count: number; value: number }>>((acc, dav) => {
+    const key = String(dav.client_name || "Cliente não informado").trim().toLocaleLowerCase("pt-BR");
+    if (!acc[key]) acc[key] = { name: dav.client_name || "Cliente não informado", count: 0, value: 0 };
+    acc[key].count += 1;
+    acc[key].value += Number(dav.dav_value) || 0;
+    return acc;
+  }, {})).sort((a, b) => b.count - a.count || b.value - a.value).slice(0, 5);
+
   return (
     <>
       <PageHeader
@@ -119,6 +143,55 @@ function DavsPage() {
           </strong>
         </div>
       )}
+      <section className="mb-6 space-y-4">
+        <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+          <div className="rounded-xl border bg-card p-4 shadow-card transition-all duration-300 hover:-translate-y-0.5 hover:shadow-md">
+            <div className="flex items-center justify-between text-sm text-muted-foreground"><span>Total de DAVs</span><TrendingUp className="h-4 w-4" /></div>
+            <div className="mt-2 text-2xl font-bold tabular-nums">{totalDavs}</div>
+            <p className="mt-1 text-xs text-muted-foreground">Registros visíveis para seu perfil</p>
+          </div>
+          <div className="rounded-xl border bg-card p-4 shadow-card transition-all duration-300 hover:-translate-y-0.5 hover:shadow-md">
+            <div className="flex items-center justify-between text-sm text-muted-foreground"><span>Vendas concluídas</span><CheckCircle2 className="h-4 w-4 text-emerald-600" /></div>
+            <div className="mt-2 text-2xl font-bold tabular-nums">{completedDavs.length}</div>
+            <p className="mt-1 text-xs text-muted-foreground">Valor registrado: {formatCurrency(completedValue)}</p>
+          </div>
+          <div className="rounded-xl border bg-card p-4 shadow-card transition-all duration-300 hover:-translate-y-0.5 hover:shadow-md">
+            <div className="flex items-center justify-between text-sm text-muted-foreground"><span>DAVs potenciais / abertas</span><TrendingUp className="h-4 w-4 text-amber-600" /></div>
+            <div className="mt-2 text-2xl font-bold tabular-nums">{potentialDavs.length}</div>
+            <p className="mt-1 text-xs text-muted-foreground">Aguardando avanço ou conclusão</p>
+          </div>
+          <div className="rounded-xl border bg-card p-4 shadow-card transition-all duration-300 hover:-translate-y-0.5 hover:shadow-md">
+            <div className="flex items-center justify-between text-sm text-muted-foreground"><span>Desistências</span><XCircle className="h-4 w-4 text-rose-600" /></div>
+            <div className="mt-2 text-2xl font-bold tabular-nums">{cancelledDavs.length}</div>
+            <p className="mt-1 text-xs text-muted-foreground">DAVs cancelados</p>
+          </div>
+        </div>
+        <div className="grid gap-4 xl:grid-cols-2">
+          <div className="rounded-xl border bg-card p-5 shadow-card">
+            <h2 className="mb-4 flex items-center gap-2 font-semibold"><TrendingUp className="h-4 w-4 text-primary" />Situação das vendas</h2>
+            <div className="space-y-4">
+              {statusStats.map((item) => {
+                const Icon = item.icon;
+                const percent = totalDavs ? Math.round((item.count / totalDavs) * 100) : 0;
+                return <div key={item.label} className="space-y-1.5">
+                  <div className="flex items-center justify-between gap-3 text-sm"><span className="flex items-center gap-2"><Icon className="h-4 w-4 text-muted-foreground" />{item.label}</span><span className="font-semibold tabular-nums">{item.count} <span className="font-normal text-muted-foreground">({percent}%)</span></span></div>
+                  <div className="h-2.5 overflow-hidden rounded-full bg-muted"><div className={`h-full rounded-full transition-all duration-700 ease-out ${item.color}`} style={{ width: `${(item.count / maxStatusCount) * 100}%` }} /></div>
+                </div>;
+              })}
+              <p className="text-xs text-muted-foreground">As métricas consideram apenas os DAVs que seu usuário tem permissão para visualizar.</p>
+            </div>
+          </div>
+          <div className="rounded-xl border bg-card p-5 shadow-card">
+            <h2 className="mb-4 flex items-center gap-2 font-semibold"><Trophy className="h-4 w-4 text-amber-500" />Clientes que mais compraram</h2>
+            {topClients.length ? <div className="space-y-3">{topClients.map((client, index) => <div key={client.name.toLocaleLowerCase("pt-BR")} className="flex items-center gap-3">
+              <div className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-muted text-sm font-bold">{index + 1}</div>
+              <div className="min-w-0 flex-1"><div className="truncate text-sm font-medium">{client.name}</div><div className="text-xs text-muted-foreground">{client.count} compra{client.count === 1 ? "" : "s"} concluída{client.count === 1 ? "" : "s"}</div></div>
+              <div className="text-right text-sm font-semibold tabular-nums">{formatCurrency(client.value)}</div>
+            </div>)}</div> : <p className="text-sm text-muted-foreground">Ainda não há vendas concluídas para montar o ranking.</p>}
+            <p className="mt-4 text-xs text-muted-foreground">Ranking por quantidade de compras concluídas; o valor total desempata clientes com a mesma quantidade.</p>
+          </div>
+        </div>
+      </section>
       <div className="relative mb-5 max-w-lg">
         <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
         <Input
