@@ -106,13 +106,15 @@ function DavsPage() {
 
   const totalDavs = data.length;
   const completedDavs = data.filter((dav) => dav.status === "concluido");
-  const inProgressDavs = data.filter((dav) => ["aberto", "em_andamento"].includes(dav.status));
+  const potentialDavs = data.filter((dav) => dav.status === "aberto");
+  const inProgressDavs = data.filter((dav) => dav.status === "em_andamento");
   const cancelledDavs = data.filter((dav) => dav.status === "cancelado");
   const completedValue = completedDavs.reduce((sum, dav) => sum + (Number(dav.dav_value) || 0), 0);
   const formatCurrency = (value: number) => value.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
   const statusStats = [
     { label: "Concluídas", count: completedDavs.length, color: "bg-emerald-500", icon: CheckCircle2 },
-    { label: "Em andamento", count: inProgressDavs.length, color: "bg-blue-500", icon: Clock3 },
+    { label: "Potenciais / abertas", count: potentialDavs.length, color: "bg-amber-500", icon: TrendingUp },
+    { label: "Em edição / andamento", count: inProgressDavs.length, color: "bg-blue-500", icon: Clock3 },
     { label: "Desistências", count: cancelledDavs.length, color: "bg-rose-500", icon: XCircle },
   ];
   const maxStatusCount = Math.max(1, ...statusStats.map((item) => item.count));
@@ -122,7 +124,7 @@ function DavsPage() {
     acc[key].count += 1;
     acc[key].value += Number(dav.dav_value) || 0;
     return acc;
-  }, {})).sort((a, b) => b.value - a.value || b.count - a.count).slice(0, 5);
+  }, {})).sort((a, b) => b.count - a.count || b.value - a.value).slice(0, 5);
 
   return (
     <>
@@ -152,9 +154,9 @@ function DavsPage() {
             <p className="mt-1 text-xs text-muted-foreground">Valor registrado: {formatCurrency(completedValue)}</p>
           </div>
           <div className="rounded-xl border bg-card p-4 shadow-card transition-all duration-300 hover:-translate-y-0.5 hover:shadow-md">
-            <div className="flex items-center justify-between text-sm text-muted-foreground"><span>Em andamento</span><Clock3 className="h-4 w-4 text-blue-600" /></div>
-            <div className="mt-2 text-2xl font-bold tabular-nums">{inProgressDavs.length}</div>
-            <p className="mt-1 text-xs text-muted-foreground">Abertas ou em atendimento</p>
+            <div className="flex items-center justify-between text-sm text-muted-foreground"><span>DAVs potenciais / abertas</span><TrendingUp className="h-4 w-4 text-amber-600" /></div>
+            <div className="mt-2 text-2xl font-bold tabular-nums">{potentialDavs.length}</div>
+            <p className="mt-1 text-xs text-muted-foreground">Aguardando avanço ou conclusão</p>
           </div>
           <div className="rounded-xl border bg-card p-4 shadow-card transition-all duration-300 hover:-translate-y-0.5 hover:shadow-md">
             <div className="flex items-center justify-between text-sm text-muted-foreground"><span>Desistências</span><XCircle className="h-4 w-4 text-rose-600" /></div>
@@ -184,7 +186,7 @@ function DavsPage() {
               <div className="min-w-0 flex-1"><div className="truncate text-sm font-medium">{client.name}</div><div className="text-xs text-muted-foreground">{client.count} compra{client.count === 1 ? "" : "s"} concluída{client.count === 1 ? "" : "s"}</div></div>
               <div className="text-right text-sm font-semibold tabular-nums">{formatCurrency(client.value)}</div>
             </div>)}</div> : <p className="text-sm text-muted-foreground">Ainda não há vendas concluídas para montar o ranking.</p>}
-            <p className="mt-4 text-xs text-muted-foreground">Ranking calculado pelo valor dos DAVs concluídos.</p>
+            <p className="mt-4 text-xs text-muted-foreground">Ranking por quantidade de compras concluídas; o valor total desempata clientes com a mesma quantidade.</p>
           </div>
         </div>
       </section>
