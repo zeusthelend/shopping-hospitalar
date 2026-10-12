@@ -68,33 +68,33 @@ export type Database = {
       announcements: {
         Row: {
           author_id: string | null
+          banner_url: string | null
           body: string
           created_at: string
           id: string
           important: boolean
-          title: string
-          banner_url: string | null
           media_urls: string[]
+          title: string
         }
         Insert: {
           author_id?: string | null
+          banner_url?: string | null
           body?: string
           created_at?: string
           id?: string
           important?: boolean
-          title: string
-          banner_url?: string | null
           media_urls?: string[]
+          title: string
         }
         Update: {
           author_id?: string | null
+          banner_url?: string | null
           body?: string
           created_at?: string
           id?: string
           important?: boolean
-          title?: string
-          banner_url?: string | null
           media_urls?: string[]
+          title?: string
         }
         Relationships: []
       }
@@ -103,24 +103,24 @@ export type Database = {
           company_name: string
           id: number
           logo_url: string | null
-          logo_video_url: string | null
           logo_video_speed: number
+          logo_video_url: string | null
           updated_at: string
         }
         Insert: {
           company_name?: string
           id?: number
           logo_url?: string | null
-          logo_video_url?: string | null
           logo_video_speed?: number
+          logo_video_url?: string | null
           updated_at?: string
         }
         Update: {
           company_name?: string
           id?: number
           logo_url?: string | null
-          logo_video_url?: string | null
           logo_video_speed?: number
+          logo_video_url?: string | null
           updated_at?: string
         }
         Relationships: []
@@ -493,6 +493,7 @@ export type Database = {
       }
       davs: {
         Row: {
+          category: string
           client_name: string
           created_at: string
           created_by: string
@@ -506,6 +507,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          category?: string
           client_name: string
           created_at?: string
           created_by: string
@@ -519,6 +521,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          category?: string
           client_name?: string
           created_at?: string
           created_by?: string
