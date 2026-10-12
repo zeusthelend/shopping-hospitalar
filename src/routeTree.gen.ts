@@ -21,6 +21,7 @@ import { Route as AuthenticatedDashboardRouteImport } from './routes/_authentica
 import { Route as AuthenticatedDavsRouteImport } from './routes/_authenticated/davs'
 import { Route as AuthenticatedDocumentosRouteImport } from './routes/_authenticated/documentos'
 import { Route as AuthenticatedFuncionariosRouteImport } from './routes/_authenticated/funcionarios'
+import { Route as AuthenticatedMinhasVendasRouteImport } from './routes/_authenticated/minhas-vendas'
 import { Route as AuthenticatedNotificacoesRouteImport } from './routes/_authenticated/notificacoes'
 import { Route as AuthenticatedPerfilRouteImport } from './routes/_authenticated/perfil'
 import { Route as AuthenticatedPublicacoesRouteImport } from './routes/_authenticated/publicacoes'
@@ -90,6 +91,12 @@ const AuthenticatedFuncionariosRoute =
     path: '/funcionarios',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
+const AuthenticatedMinhasVendasRoute =
+  AuthenticatedMinhasVendasRouteImport.update({
+    id: '/minhas-vendas',
+    path: '/minhas-vendas',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
 const AuthenticatedNotificacoesRoute =
   AuthenticatedNotificacoesRouteImport.update({
     id: '/notificacoes',
@@ -141,6 +148,7 @@ export interface FileRoutesByFullPath {
   '/davs': typeof AuthenticatedDavsRoute
   '/documentos': typeof AuthenticatedDocumentosRoute
   '/funcionarios': typeof AuthenticatedFuncionariosRoute
+  '/minhas-vendas': typeof AuthenticatedMinhasVendasRoute
   '/notificacoes': typeof AuthenticatedNotificacoesRoute
   '/perfil': typeof AuthenticatedPerfilRoute
   '/publicacoes': typeof AuthenticatedPublicacoesRoute
@@ -161,6 +169,7 @@ export interface FileRoutesByTo {
   '/davs': typeof AuthenticatedDavsRoute
   '/documentos': typeof AuthenticatedDocumentosRoute
   '/funcionarios': typeof AuthenticatedFuncionariosRoute
+  '/minhas-vendas': typeof AuthenticatedMinhasVendasRoute
   '/notificacoes': typeof AuthenticatedNotificacoesRoute
   '/perfil': typeof AuthenticatedPerfilRoute
   '/publicacoes': typeof AuthenticatedPublicacoesRoute
@@ -183,6 +192,7 @@ export interface FileRoutesById {
   '/_authenticated/davs': typeof AuthenticatedDavsRoute
   '/_authenticated/documentos': typeof AuthenticatedDocumentosRoute
   '/_authenticated/funcionarios': typeof AuthenticatedFuncionariosRoute
+  '/_authenticated/minhas-vendas': typeof AuthenticatedMinhasVendasRoute
   '/_authenticated/notificacoes': typeof AuthenticatedNotificacoesRoute
   '/_authenticated/perfil': typeof AuthenticatedPerfilRoute
   '/_authenticated/publicacoes': typeof AuthenticatedPublicacoesRoute
@@ -205,6 +215,7 @@ export interface FileRouteTypes {
     | '/davs'
     | '/documentos'
     | '/funcionarios'
+    | '/minhas-vendas'
     | '/notificacoes'
     | '/perfil'
     | '/publicacoes'
@@ -225,6 +236,7 @@ export interface FileRouteTypes {
     | '/davs'
     | '/documentos'
     | '/funcionarios'
+    | '/minhas-vendas'
     | '/notificacoes'
     | '/perfil'
     | '/publicacoes'
@@ -246,6 +258,7 @@ export interface FileRouteTypes {
     | '/_authenticated/davs'
     | '/_authenticated/documentos'
     | '/_authenticated/funcionarios'
+    | '/_authenticated/minhas-vendas'
     | '/_authenticated/notificacoes'
     | '/_authenticated/perfil'
     | '/_authenticated/publicacoes'
@@ -350,6 +363,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedFuncionariosRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/minhas-vendas': {
+      id: '/_authenticated/minhas-vendas'
+      path: '/minhas-vendas'
+      fullPath: '/minhas-vendas'
+      preLoaderRoute: typeof AuthenticatedMinhasVendasRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/notificacoes': {
       id: '/_authenticated/notificacoes'
       path: '/notificacoes'
@@ -422,6 +442,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedDavsRoute: typeof AuthenticatedDavsRoute
   AuthenticatedDocumentosRoute: typeof AuthenticatedDocumentosRoute
   AuthenticatedFuncionariosRoute: typeof AuthenticatedFuncionariosRoute
+  AuthenticatedMinhasVendasRoute: typeof AuthenticatedMinhasVendasRoute
   AuthenticatedNotificacoesRoute: typeof AuthenticatedNotificacoesRoute
   AuthenticatedPerfilRoute: typeof AuthenticatedPerfilRoute
   AuthenticatedPublicacoesRoute: typeof AuthenticatedPublicacoesRoute
@@ -437,6 +458,7 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedDavsRoute: AuthenticatedDavsRoute,
   AuthenticatedDocumentosRoute: AuthenticatedDocumentosRoute,
   AuthenticatedFuncionariosRoute: AuthenticatedFuncionariosRoute,
+  AuthenticatedMinhasVendasRoute: AuthenticatedMinhasVendasRoute,
   AuthenticatedNotificacoesRoute: AuthenticatedNotificacoesRoute,
   AuthenticatedPerfilRoute: AuthenticatedPerfilRoute,
   AuthenticatedPublicacoesRoute: AuthenticatedPublicacoesRoute,
