@@ -3,6 +3,7 @@
 DROP POLICY IF EXISTS "managers write posts" ON public.posts;
 DROP POLICY IF EXISTS "admin write posts" ON public.posts;
 DROP POLICY IF EXISTS "admin manage posts" ON public.posts;
+DROP POLICY IF EXISTS "Administrators manage posts" ON public.posts;
 
 CREATE POLICY "admin manage posts"
   ON public.posts
