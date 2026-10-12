@@ -35,8 +35,15 @@ function getGoogleSlidesEmbedUrl(value: string): string | null {
   try {
     const url = new URL(value.trim());
     if (url.hostname !== "docs.google.com") return null;
-    const presentationId = url.pathname.match(/\/presentation\/d\/([a-zA-Z0-9_-]+)/)?.[1];
-    if (!presentationId) return null;
+
+    // Published presentations use /presentation/d/e/ID/pub, unlike regular slides.
+    const publishedId = url.pathname.match(/\\/presentation\\/(?:u\\/\\d+\\/)?d\\/e\\/([a-zA-Z0-9_-]+)/)?.[1];
+    if (publishedId) {
+      return "https://docs.google.com/presentation/d/e/" + publishedId + "/embed?start=false&loop=false&delayms=3000";
+    }
+
+    const presentationId = url.pathname.match(/\\/presentation\\/(?:u\\/\\d+\\/)?d\\/([a-zA-Z0-9_-]+)/)?.[1];
+    if (!presentationId || presentationId === "e") return null;
     return "https://docs.google.com/presentation/d/" + presentationId + "/embed?start=false&loop=false&delayms=3000";
   } catch {
     return null;
@@ -191,7 +198,10 @@ function Page() {
               {urls.map((url, index) => {
                 const embedUrl = getGoogleSlidesEmbedUrl(url);
                 return embedUrl
-                  ? <iframe key={url + index} src={embedUrl} title={publication.title + " — apresentação " + (index + 1)} loading="lazy" allowFullScreen className={urls.length > 1 ? "h-[420px] w-[85%] shrink-0 snap-center rounded-lg border bg-muted" : "h-[420px] w-full border-0 bg-muted"} />
+                  ? <div key={url + index} className={urls.length > 1 ? "w-[85%] shrink-0 snap-center" : "w-full"}>
+                    <iframe src={embedUrl} title={publication.title + " — apresentação " + (index + 1)} loading="lazy" allowFullScreen referrerPolicy="strict-origin-when-cross-origin" className={urls.length > 1 ? "h-[420px] w-full rounded-lg border bg-muted" : "h-[420px] w-full border-0 bg-muted"} />
+                    <a href={url} target="_blank" rel="noreferrer" className="mt-2 inline-block text-sm text-primary underline underline-offset-4">Se o slide não carregar, abrir apresentação</a>
+                  </div>
                   : <img key={url + index} src={normalizeImageUrl(url)} alt={publication.title + " — imagem " + (index + 1)} loading="lazy" className={urls.length > 1 ? "max-h-[420px] w-[85%] shrink-0 snap-center rounded-lg bg-muted object-contain" : "max-h-[420px] w-full object-contain bg-muted"} onError={(event) => { event.currentTarget.style.display = "none"; }} />;
               })}
             </div>
