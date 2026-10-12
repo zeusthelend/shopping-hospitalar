@@ -1,4 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
+import { useEffect, useRef } from "react";
 import officialLogo from "@/assets/shopping-hospitalar-logo.jpeg.asset.json";
 import { supabase } from "@/integrations/supabase/client";
 import { cn } from "@/lib/utils";
@@ -23,15 +24,34 @@ export function useSettings() {
 
 export function Logo({ className, light }: { className?: string; light?: boolean }) {
   const { data } = useSettings();
+  const videoRef = useRef<HTMLVideoElement>(null);
   const logoUrl = data?.logo_url ?? officialLogo.url;
+  const videoUrl = data?.logo_video_url ?? null;
+  const playbackRate = Math.min(1, Math.max(0.5, Number(data?.logo_video_speed ?? 0.8)));
 
-  return (
-    <img
-      src={logoUrl}
-      alt={data?.company_name ?? "Shopping Hospitalar"}
-      className={cn("h-12 w-12 rounded-full object-cover", light && "ring-1 ring-sidebar-border", className)}
-    />
-  );
+  useEffect(() => {
+    if (videoRef.current) videoRef.current.playbackRate = playbackRate;
+  }, [playbackRate, videoUrl]);
+
+  const mediaClass = cn("h-12 w-12 rounded-full object-cover", light && "ring-1 ring-sidebar-border", className);
+  if (videoUrl) {
+    return (
+      <video
+        ref={videoRef}
+        src={videoUrl}
+        aria-label={data?.company_name ?? "Shopping Hospitalar"}
+        className={mediaClass}
+        autoPlay
+        loop
+        muted
+        playsInline
+        preload="metadata"
+        onLoadedMetadata={(event) => { event.currentTarget.playbackRate = playbackRate; }}
+      />
+    );
+  }
+
+  return <img src={logoUrl} alt={data?.company_name ?? "Shopping Hospitalar"} className={mediaClass} />;
 }
 
 const STATUS = {
