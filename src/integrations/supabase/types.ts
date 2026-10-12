@@ -68,30 +68,33 @@ export type Database = {
       announcements: {
         Row: {
           author_id: string | null
-          banner_url: string | null
           body: string
           created_at: string
           id: string
           important: boolean
           title: string
+          banner_url: string | null
+          media_urls: string[]
         }
         Insert: {
           author_id?: string | null
-          banner_url?: string | null
           body?: string
           created_at?: string
           id?: string
           important?: boolean
           title: string
+          banner_url?: string | null
+          media_urls?: string[]
         }
         Update: {
           author_id?: string | null
-          banner_url?: string | null
           body?: string
           created_at?: string
           id?: string
           important?: boolean
           title?: string
+          banner_url?: string | null
+          media_urls?: string[]
         }
         Relationships: []
       }
