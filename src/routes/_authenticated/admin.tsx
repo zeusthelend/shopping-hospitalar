@@ -1,7 +1,7 @@
 import { createFileRoute, Navigate } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Check, Copy, KeyRound, Plus, Trash2, Upload } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useMe, uploadSigned } from "@/lib/auth";
@@ -285,7 +285,25 @@ function AccessPins() {
 }
 
 function Branding() {
+  const qc = useQueryClient();
   const [busy, setBusy] = useState(false);
+  const [videoUrl, setVideoUrl] = useState("");
+  const [speed, setSpeed] = useState("0.8");
+  const { data: settings } = useQuery({
+    queryKey: ["branding-settings"],
+    queryFn: async () => {
+      const { data, error } = await supabase.from("app_settings").select("logo_video_url,logo_video_speed").eq("id", 1).single();
+      if (error) throw error;
+      return data;
+    },
+  });
+
+  useEffect(() => {
+    if (settings) {
+      setVideoUrl(settings.logo_video_url ?? "");
+      setSpeed(String(settings.logo_video_speed ?? 0.8));
+    }
+  }, [settings]);
 
   async function upload(event: React.ChangeEvent<HTMLInputElement>) {
     const file = event.target.files?.[0];
@@ -294,36 +312,100 @@ function Branding() {
     try {
       if (file.size > 5_000_000) throw new Error("A imagem deve ter até 5 MB.");
       const url = await uploadSigned("branding", `logo-${Date.now()}-${file.name}`, file);
-      const { error } = await supabase
-        .from("app_settings")
-        .update({ logo_url: url, updated_at: new Date().toISOString() })
-        .eq("id", 1);
+      const { error } = await supabase.from("app_settings").update({ logo_url: url, updated_at: new Date().toISOString() }).eq("id", 1);
       if (error) throw error;
-      toast.success("Logo atualizado. Recarregue para visualizar.");
+      await qc.invalidateQueries({ queryKey: ["settings"] });
+      toast.success("Logo atualizada.");
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Erro no upload.");
+    } finally {
+      setBusy(false);
+      event.target.value = "";
+    }
+  }
+
+  async function uploadVideo(event: React.ChangeEvent<HTMLInputElement>) {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    setBusy(true);
+    try {
+      if (file.size > 20_000_000) throw new Error("O vídeo deve ter até 20 MB.");
+      if (!["video/mp4", "video/webm"].includes(file.type)) throw new Error("Envie um vídeo MP4 ou WebM.");
+      const url = await uploadSigned("branding", `logo-animada-${Date.now()}-${file.name}`, file);
+      const { error } = await supabase.from("app_settings").update({ logo_video_url: url, logo_video_speed: Number(speed), updated_at: new Date().toISOString() }).eq("id", 1);
+      if (error) throw error;
+      setVideoUrl(url);
+      await qc.invalidateQueries({ queryKey: ["settings"] });
+      await qc.invalidateQueries({ queryKey: ["branding-settings"] });
+      toast.success("Logo animada salva.");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Não foi possível enviar o vídeo.");
+    } finally {
+      setBusy(false);
+      event.target.value = "";
+    }
+  }
+
+  async function saveVideoSettings(event: React.FormEvent) {
+    event.preventDefault();
+    setBusy(true);
+    try {
+      const normalized = videoUrl.trim();
+      if (normalized && !normalized.toLowerCase().startsWith("https://")) {
+        throw new Error("Use um link HTTPS direto para um vídeo MP4 ou WebM.");
+      }
+      const { error } = await supabase.from("app_settings").update({
+        logo_video_url: normalized || null,
+        logo_video_speed: Number(speed),
+        updated_at: new Date().toISOString(),
+      }).eq("id", 1);
+      if (error) throw error;
+      await qc.invalidateQueries({ queryKey: ["settings"] });
+      await qc.invalidateQueries({ queryKey: ["branding-settings"] });
+      toast.success(normalized ? "Configuração da logo animada salva." : "Vídeo removido; a logo estática será exibida.");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Não foi possível salvar.");
     } finally {
       setBusy(false);
     }
   }
 
   return (
-    <div className="max-w-2xl rounded-xl border bg-card p-6 shadow-card">
-      <h2 className="font-bold">Logotipo da empresa</h2>
-      <p className="mt-1 text-sm text-muted-foreground">
-        Envie uma imagem PNG, JPG ou WebP com até 5 MB.
-      </p>
-      <Label className="mt-5 flex w-fit cursor-pointer items-center gap-2 rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground">
-        <Upload className="h-4 w-4" />
-        {busy ? "Enviando..." : "Selecionar logo"}
-        <Input
-          className="hidden"
-          type="file"
-          accept="image/png,image/jpeg,image/webp"
-          disabled={busy}
-          onChange={upload}
-        />
-      </Label>
+    <div className="max-w-2xl space-y-5">
+      <section className="rounded-xl border bg-card p-6 shadow-card">
+        <h2 className="font-bold">Logotipo da empresa</h2>
+        <p className="mt-1 text-sm text-muted-foreground">Envie uma imagem PNG, JPG ou WebP com até 5 MB.</p>
+        <Label className="mt-5 flex w-fit cursor-pointer items-center gap-2 rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground">
+          <Upload className="h-4 w-4" />
+          {busy ? "Enviando..." : "Selecionar logo"}
+          <Input className="hidden" type="file" accept="image/png,image/jpeg,image/webp" disabled={busy} onChange={upload} />
+        </Label>
+      </section>
+      <section className="rounded-xl border bg-card p-6 shadow-card">
+        <h2 className="font-bold">Logo animada do caminhão</h2>
+        <p className="mt-1 text-sm text-muted-foreground">
+          Envie MP4/WebM ou informe um link direto HTTPS. A animação toca automaticamente, sem som e em loop, a 0,8× por padrão.
+          Links de apresentação do Google Slides não são arquivos de vídeo diretos e não permitem controlar a velocidade.
+        </p>
+        <Label className="mt-4 block">Link direto do vídeo (opcional)</Label>
+        <Input className="mt-2" type="url" placeholder="https://exemplo.com/logo.mp4" value={videoUrl} onChange={(event) => setVideoUrl(event.target.value)} />
+        <Label className="mt-4 block">Velocidade da animação</Label>
+        <select className="mt-2 h-10 w-full rounded-md border bg-background px-3 text-sm" value={speed} onChange={(event) => setSpeed(event.target.value)}>
+          <option value="1">Normal (1×)</option>
+          <option value="0.9">Levemente lenta (0,9×)</option>
+          <option value="0.8">Lenta e suave (0,8×)</option>
+          <option value="0.7">Mais lenta (0,7×)</option>
+        </select>
+        <Label className="mt-4 flex w-fit cursor-pointer items-center gap-2 rounded-md border px-4 py-2 text-sm font-medium">
+          <Upload className="h-4 w-4" />
+          {busy ? "Enviando..." : "Enviar vídeo MP4/WebM (até 20 MB)"}
+          <Input className="hidden" type="file" accept="video/mp4,video/webm" disabled={busy} onChange={uploadVideo} />
+        </Label>
+        <form className="mt-4 flex flex-wrap gap-2" onSubmit={saveVideoSettings}>
+          <Button disabled={busy}>{busy ? "Salvando..." : "Salvar animação"}</Button>
+          <Button type="button" variant="outline" disabled={busy} onClick={() => { setVideoUrl(""); }}>Remover vídeo</Button>
+        </form>
+      </section>
     </div>
   );
 }

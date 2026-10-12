@@ -103,18 +103,24 @@ export type Database = {
           company_name: string
           id: number
           logo_url: string | null
+          logo_video_url: string | null
+          logo_video_speed: number
           updated_at: string
         }
         Insert: {
           company_name?: string
           id?: number
           logo_url?: string | null
+          logo_video_url?: string | null
+          logo_video_speed?: number
           updated_at?: string
         }
         Update: {
           company_name?: string
           id?: number
           logo_url?: string | null
+          logo_video_url?: string | null
+          logo_video_speed?: number
           updated_at?: string
         }
         Relationships: []

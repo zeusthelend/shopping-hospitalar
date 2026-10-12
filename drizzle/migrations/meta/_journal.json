@@ -134,6 +134,13 @@
       "when": 1791849600000,
       "tag": "0018_dav_categories",
       "breakpoints": true
+    },
+    {
+      "idx": 19,
+      "version": "7",
+      "when": 1791850200000,
+      "tag": "0019_animated_logo_settings",
+      "breakpoints": true
     }
   ]
 }
