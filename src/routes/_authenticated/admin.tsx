@@ -11,6 +11,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { MemberPositions } from "@/components/member-positions";
+import { EmployeeAccessManagement } from "@/components/employee-access-management";
 
 export const Route = createFileRoute("/_authenticated/admin")({
   head: () => ({
@@ -28,24 +29,38 @@ export const Route = createFileRoute("/_authenticated/admin")({
 
 function Admin() {
   const { data: me } = useMe();
-  if (me && !me.isAdmin && !me.roles.includes("gerente")) return <Navigate to="/dashboard" replace />;
+  const { data: currentPositionName, isPending: positionPending } = useQuery({
+    queryKey: ["admin-current-position", me?.profile?.position_id],
+    enabled: !!me?.profile?.position_id,
+    queryFn: async () => {
+      const { data, error } = await supabase.from("positions").select("name").eq("id", me!.profile!.position_id!).single();
+      if (error) throw error;
+      return data.name;
+    },
+  });
+  const canManageEmployeeAccess = !!me && (me.isAdmin || me.roles.includes("gerente") || (currentPositionName ?? "").toLowerCase().includes("encarregado"));
+  const canManageMembers = !!me && (me.isAdmin || me.roles.includes("gerente"));
+  if (me?.profile?.position_id && positionPending) return <main className="grid min-h-screen place-items-center p-6 text-sm text-muted-foreground">Verificando permissões…</main>;
+  if (me && !me.isAdmin && !me.roles.includes("gerente") && !canManageEmployeeAccess) return <Navigate to="/dashboard" replace />;
   return (
     <>
       <PageHeader
         title="Administração"
         subtitle="Gerencie a estrutura, a identidade e o acesso à empresa."
       />
-      <Tabs defaultValue="members">
+      <Tabs defaultValue={canManageMembers ? "members" : "employee-access"}>
         <TabsList className="mb-5 flex h-auto flex-wrap">
-          <TabsTrigger value="members">Cargos dos membros</TabsTrigger>
+          {canManageMembers && <TabsTrigger value="members">Cargos dos membros</TabsTrigger>}
           {me?.isAdmin && <>
           <TabsTrigger value="departments">Departamentos</TabsTrigger>
           <TabsTrigger value="positions">Cargos</TabsTrigger>
           <TabsTrigger value="branding">Identidade</TabsTrigger>
           </>}
-          <TabsTrigger value="access">PINs de acesso</TabsTrigger>
+          {canManageEmployeeAccess && <TabsTrigger value="employee-access">Acesso de funcionários</TabsTrigger>}
+          {canManageMembers && <TabsTrigger value="access">PINs de acesso</TabsTrigger>}
         </TabsList>
-        <TabsContent value="members"><MemberPositions /></TabsContent>
+        {canManageMembers && <TabsContent value="members"><MemberPositions /></TabsContent>}
+        {canManageEmployeeAccess && <TabsContent value="employee-access"><EmployeeAccessManagement /></TabsContent>}
         {me?.isAdmin && <>
         <TabsContent value="departments">
           <Entity type="departments" label="departamento" />
@@ -57,9 +72,7 @@ function Admin() {
           <Branding />
         </TabsContent>
         </>}
-        <TabsContent value="access">
-          <AccessPins />
-        </TabsContent>
+        {canManageMembers && <TabsContent value="access"><AccessPins /></TabsContent>}
       </Tabs>
     </>
   );
