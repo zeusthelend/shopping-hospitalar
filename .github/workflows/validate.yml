@@ -36,7 +36,7 @@ jobs:
 
       - name: Run lint
         # Disable only the formatting rule; lint the complete codebase.
-        run: npx eslint . --rule 'prettier/prettier: off'
+        run: npx eslint . --rule '{"prettier/prettier":"off"}'
 
       - name: Run tests
         run: npm test
