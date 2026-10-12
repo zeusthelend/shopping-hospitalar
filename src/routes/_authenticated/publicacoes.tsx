@@ -150,7 +150,8 @@ function Page() {
     if (!title.trim() || !body.trim()) { toast.error("Preencha o título e o texto da publicação."); return; }
     const urls = mediaMode === "text" ? [] : mediaUrlsText.split(/\n|,/).map((url) => url.trim()).filter(Boolean);
     if (mediaMode !== "text" && !urls.length) { toast.error(mediaMode === "canva" ? "Adicione o link público do site Canva." : "Adicione ao menos um endereço de imagem."); return; }
-    if (mediaMode === "canva" && (urls.length !== 1 || !isCanvaSiteUrl(urls[0]))) { toast.error("Informe um único link HTTPS de site público do Canva (canva.site). Links de edição não são aceitos."); return; }
+    if (mediaMode === "canva" && (!urls.length || !isCanvaSiteUrl(urls[0]))) { toast.error("O primeiro endereço precisa ser o link HTTPS público do site Canva (canva.site)."); return; }
+    if (mediaMode === "canva" && urls.slice(1).some((url) => !/^https:\/\//i.test(url))) { toast.error("Os links das imagens adicionais precisam começar com https://."); return; }
     if (urls.some((url) => !/^https?:\/\//i.test(url))) { toast.error("Os endereços das imagens devem começar com http:// ou https://."); return; }
     if (mediaMode === "image" && urls.length > 1) { toast.error("No modo Uma imagem, informe somente um endereço."); return; }
     setBusy(true);
@@ -194,9 +195,9 @@ function Page() {
         <Button type="button" variant={mediaMode === "canva" ? "default" : "outline"} onClick={() => setMediaMode("canva")}>Site do Canva</Button>
       </div>
       {mediaMode !== "text" && <>
-        {mediaMode === "canva" && <p className="text-xs text-muted-foreground">Cole o endereço HTTPS público do site publicado no Canva (normalmente termina em canva.site). Links de edição do Canva não são aceitos. Se o Canva impedir a incorporação, a publicação terá um link para abrir o site em outra aba.</p>}
-        <Label htmlFor="publication-media">{mediaMode === "canva" ? "Link público do site Canva" : mediaMode === "image" ? "Endereço público da imagem" : "Endereços das imagens (um por linha, na ordem dos slides)"}</Label>
-        <Textarea id="publication-media" value={mediaUrlsText} onChange={(event) => setMediaUrlsText(event.target.value)} rows={mediaMode === "image" ? 2 : 5} placeholder={mediaMode === "canva" ? "https://seusite.my.canva.site" : "https://exemplo.com/imagem-1.jpg\nhttps://exemplo.com/imagem-2.jpg"} />
+        {mediaMode === "canva" && <p className="text-xs text-muted-foreground">Cole primeiro o link HTTPS do site público do Canva. Para exibir imagens mesmo quando o Canva bloquear a incorporação, adicione abaixo, uma por linha, links HTTPS diretos das imagens públicas usadas no site. O primeiro endereço deve ser o site; os demais serão exibidos como galeria. Links de edição não são aceitos.</p>}
+        <Label htmlFor="publication-media">{mediaMode === "canva" ? "Link do site Canva + links das imagens (um por linha)" : mediaMode === "image" ? "Endereço público da imagem" : "Endereços das imagens (um por linha, na ordem dos slides)"}</Label>
+        <Textarea id="publication-media" value={mediaUrlsText} onChange={(event) => setMediaUrlsText(event.target.value)} rows={mediaMode === "image" ? 2 : 5} placeholder={mediaMode === "canva" ? "https://seusite.my.canva.site\nhttps://exemplo.com/imagem-1.jpg\nhttps://exemplo.com/imagem-2.jpg" : "https://exemplo.com/imagem-1.jpg\nhttps://exemplo.com/imagem-2.jpg"} />
         {mediaMode !== "canva" && <p className="text-xs text-muted-foreground">Use links públicos diretos de imagens ou uma apresentação do Google Slides publicada na Web. Links compartilhados do Google Drive são convertidos quando possível. A galeria avança automaticamente entre os itens.</p>}
         <div className="flex flex-wrap gap-2">{mediaUrlsText.split(/\n|,/).map((url) => url.trim()).filter((url) => /^https?:\/\//i.test(url)).map((url, index) => {
           const embedUrl = getGoogleSlidesEmbedUrl(url);
@@ -222,7 +223,7 @@ function Page() {
               {urls.map((url, index) => {
                 const embedUrl = getGoogleSlidesEmbedUrl(url);
                 return isCanvaSiteUrl(url)
-                  ? <div key={url + index} className="w-full space-y-2 p-3"><iframe src={url} title={publication.title + " — site Canva"} loading="lazy" referrerPolicy="strict-origin-when-cross-origin" sandbox="allow-scripts allow-same-origin allow-forms allow-popups" className="h-[520px] w-full rounded-lg border bg-muted" /><div className="flex justify-center"><a href={url} target="_blank" rel="noopener noreferrer" className="text-sm font-medium text-primary underline">Abrir site público do Canva em nova aba</a></div></div>
+                  ? <div key={url + index} className="w-full space-y-2 p-3"><iframe src={url} title={publication.title + " — site Canva"} loading="lazy" referrerPolicy="strict-origin-when-cross-origin" sandbox="allow-scripts allow-same-origin allow-forms allow-popups" className="h-[520px] w-full rounded-lg border bg-muted" /><div className="flex justify-center"><a href={url} target="_blank" rel="noopener noreferrer" className="text-sm font-medium text-primary underline">Abrir site público do Canva em nova aba</a></div><p className="text-center text-xs text-muted-foreground">Se o site não carregar incorporado, use o botão acima. As imagens adicionais informadas pelo administrador aparecem abaixo.</p></div>
                   : embedUrl
                   ? <div key={url + index} className={urls.length > 1 ? "w-[85%] shrink-0 snap-center" : "w-full"}>
                     <iframe src={embedUrl} title={publication.title + " — apresentação " + (index + 1)} loading="lazy" allowFullScreen tabIndex={canManage ? 0 : -1} referrerPolicy="strict-origin-when-cross-origin" className={(urls.length > 1 ? "h-[420px] w-full rounded-lg border bg-muted" : "h-[420px] w-full border-0 bg-muted") + (canManage ? "" : " pointer-events-none")} />
