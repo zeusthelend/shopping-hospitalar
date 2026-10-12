@@ -1,6 +1,7 @@
+import { useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
-import { AlertTriangle, CalendarDays, FileText, Megaphone, MessageSquare, Users } from "lucide-react";
+import { AlertTriangle, CalendarDays, FileText, Megaphone, MessageSquare, Users, Volume2, VolumeX } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useMe } from "@/lib/auth";
 import { Empty, livePresence, PageHeader } from "@/components/brand";
@@ -31,6 +32,15 @@ function getGoogleSlidesEmbedUrl(value: string): string | null {
   }
 }
 
+function isVideoUrl(value: string): boolean {
+  try {
+    const url = new URL(value.trim());
+    return url.protocol === "https:" && /\\.(mp4|webm|ogg)(?:$|[?#])/i.test(url.pathname + url.search);
+  } catch {
+    return false;
+  }
+}
+
 function normalizeImageUrl(value: string): string {
   const url = value.trim();
   const driveId = url.match(/drive\.google\.com\/(?:file\/d\/|open\?id=|uc\?[^#]*id=)([a-zA-Z0-9_-]+)/)?.[1];
@@ -39,6 +49,7 @@ function normalizeImageUrl(value: string): string {
 
 function Dashboard() {
   const { data: me } = useMe();
+  const [videoAudio, setVideoAudio] = useState<Record<string, boolean>>({});
   const { data } = useQuery({ queryKey: ["dashboard"], queryFn: async () => {
     const [p, a, m, d, posts, davs] = await Promise.all([
       supabase
@@ -83,9 +94,19 @@ function Dashboard() {
                 <iframe src={slidesEmbed} title={x.title + " — slide"} loading="lazy" allowFullScreen referrerPolicy="strict-origin-when-cross-origin" className="h-40 w-full rounded-lg border bg-background" />
                 <p className="text-xs text-muted-foreground">Apresentação incorporada para visualização.</p>
               </div>
-            : <a href={firstMedia} target="_blank" rel="noreferrer" className="block">
-                <img src={normalizeImageUrl(firstMedia)} alt={x.title} loading="lazy" className="max-h-40 w-full rounded-lg bg-background object-contain" />
-              </a>) }
+            : isVideoUrl(firstMedia)
+              ? <div className="space-y-2">
+                  <video src={firstMedia} title={x.title + " — vídeo em loop"} autoPlay muted={!videoAudio[x.id]} loop playsInline controls preload="metadata" className="max-h-64 w-full rounded-lg bg-black object-contain" />
+                  <div className="flex justify-end">
+                    <button type="button" onClick={() => setVideoAudio((current) => ({ ...current, [x.id]: !current[x.id] }))} aria-label={videoAudio[x.id] ? "Silenciar vídeo" : "Ativar som do vídeo"} className="inline-flex items-center rounded-md border bg-background px-3 py-1.5 text-xs font-medium hover:bg-muted">
+                      {videoAudio[x.id] ? <VolumeX className="mr-2 h-4 w-4" /> : <Volume2 className="mr-2 h-4 w-4" />}
+                      {videoAudio[x.id] ? "Silenciar" : "Ativar som"}
+                    </button>
+                  </div>
+                </div>
+              : <a href={firstMedia} target="_blank" rel="noreferrer" className="block">
+                  <img src={normalizeImageUrl(firstMedia)} alt={x.title} loading="lazy" className="max-h-40 w-full rounded-lg bg-background object-contain" />
+                </a>) }
           {mediaUrls.length > 1 && <p className="text-xs text-muted-foreground">{mediaUrls.length} itens na galeria — abra Publicações para ver todos os slides.</p>}
         </div>;
       }) : <Empty text="Nenhuma publicação recente." />}</Section>
