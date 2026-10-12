@@ -575,6 +575,61 @@ export type Database = {
         }
         Relationships: []
       }
+      employee_reactivation_pins: {
+        Row: {
+          created_at: string
+          created_by: string
+          employee_id: string
+          expires_at: string
+          id: string
+          pin_hash: string
+          used_at: string | null
+          used_by: string | null
+        }
+        Insert: {
+          created_at?: string
+          created_by: string
+          employee_id: string
+          expires_at?: string
+          id?: string
+          pin_hash: string
+          used_at?: string | null
+          used_by?: string | null
+        }
+        Update: {
+          created_at?: string
+          created_by?: string
+          employee_id?: string
+          expires_at?: string
+          id?: string
+          pin_hash?: string
+          used_at?: string | null
+          used_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "employee_reactivation_pins_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "employee_reactivation_pins_employee_id_fkey"
+            columns: ["employee_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "employee_reactivation_pins_used_by_fkey"
+            columns: ["used_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       firebase_push_tokens: {
         Row: {
           created_at: string
@@ -854,12 +909,14 @@ export type Database = {
         Args: { _conversation_id: string; _members: string[] }
         Returns: number
       }
+      ban_employee_with_pin: { Args: { _employee: string }; Returns: string }
       can_delete_davs: { Args: { _user_id: string }; Returns: boolean }
       can_manage_announcements: {
         Args: { _user_id?: string }
         Returns: boolean
       }
       can_manage_chat_groups: { Args: { _user_id: string }; Returns: boolean }
+      can_manage_employee_access: { Args: { _user?: string }; Returns: boolean }
       can_manage_member_position: {
         Args: { _member: string; _position: string }
         Returns: boolean
@@ -886,7 +943,15 @@ export type Database = {
         Returns: boolean
       }
       is_manager: { Args: { _user_id: string }; Returns: boolean }
+      issue_employee_reactivation_pin: {
+        Args: { _employee: string }
+        Returns: string
+      }
       redeem_access_pin: { Args: { _pin: string }; Returns: boolean }
+      redeem_employee_reactivation_pin: {
+        Args: { _pin: string }
+        Returns: boolean
+      }
       respond_chat_call: {
         Args: { _action: string; _answer?: string; _call: string }
         Returns: undefined
