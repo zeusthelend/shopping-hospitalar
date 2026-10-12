@@ -35,7 +35,7 @@ function getGoogleSlidesEmbedUrl(value: string): string | null {
 function isVideoUrl(value: string): boolean {
   try {
     const url = new URL(value.trim());
-    return url.protocol === "https:" && /\\.(mp4|webm|ogg)(?:$|[?#])/i.test(url.pathname + url.search);
+    return url.protocol === "https:" && /\.(mp4|webm|ogg)(?:$|[?#])/i.test(url.pathname + url.search);
   } catch {
     return false;
   }
