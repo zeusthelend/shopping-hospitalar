@@ -129,6 +129,7 @@ BEGIN
       WHERE pin_hash=encode(extensions.digest(_pin,'sha256'),'hex')
     );
   END LOOP;
+  DELETE FROM public.employee_reactivation_pins WHERE employee_id=_employee AND used_by IS NULL;
   INSERT INTO public.employee_reactivation_pins(employee_id,created_by,pin_hash)
   VALUES (_employee,auth.uid(),encode(extensions.digest(_pin,'sha256'),'hex'));
   RETURN _pin;
