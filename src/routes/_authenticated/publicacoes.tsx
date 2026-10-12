@@ -223,14 +223,13 @@ function Page() {
               {urls.map((url, index) => {
                 const embedUrl = getGoogleSlidesEmbedUrl(url);
                 return isCanvaSiteUrl(url)
-                  ? <div key={url + index} className="w-full space-y-3 p-3">
-                    <div className="rounded-xl border bg-card p-4 text-center">
-                      <p className="mb-2 text-sm font-semibold">{publication.title}</p>
-                      <p className="mb-3 text-xs text-muted-foreground">Site externo do Canva. Se a prévia não carregar aqui, abra o site diretamente pelo link abaixo.</p>
+                  ? <div key={url + index} className="w-full p-4">
+                    <div className="rounded-xl border bg-card p-6 text-center">
+                      <p className="mb-2 text-base font-semibold">{publication.title}</p>
+                      <p className="mb-4 text-sm text-muted-foreground">Esta publicação contém um site externo do Canva. Para evitar o erro de conexão recusada, abra o site em uma nova aba.</p>
                       <a href={url} target="_blank" rel="noopener noreferrer" className="inline-flex items-center justify-center rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:opacity-90">Abrir site do Canva</a>
+                      <p className="mt-3 text-xs text-muted-foreground">Para mostrar as imagens diretamente nesta publicação, o administrador deve adicionar os links públicos diretos das imagens ao editar a publicação.</p>
                     </div>
-                    <iframe src={url} title={publication.title + " — site Canva"} loading="lazy" referrerPolicy="strict-origin-when-cross-origin" sandbox="allow-scripts allow-same-origin allow-forms allow-popups" className="h-[520px] w-full rounded-lg border bg-muted" />
-                    <p className="text-center text-xs text-muted-foreground">As imagens públicas adicionadas pelo administrador aparecem como itens separados na galeria.</p>
                   </div>
                   : embedUrl
                   ? <div key={url + index} className={urls.length > 1 ? "w-[85%] shrink-0 snap-center" : "w-full"}>
