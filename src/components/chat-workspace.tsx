@@ -965,7 +965,7 @@ function MessageItem({
               <p className="truncate opacity-80">{reply.body}</p>
             </div>
           )}
-          {message.body?.startsWith("GIF:https://") && !message.deleted_at ? <a href={message.body.slice(4)} target="_blank" rel="noreferrer" className="block"><img src={message.body.slice(4)} alt="GIF enviado no chat" loading="lazy" className="max-h-72 max-w-full rounded-lg object-contain" /></a> : <p className={cn("whitespace-pre-wrap break-words text-sm", message.deleted_at && "italic opacity-70")}>{message.body}</p>}
+          {message.body?.startsWith("GIF:https://") && !message.deleted_at ? (() => { const url = message.body.slice(4).trim(); const tenorId = url.match(/^https:\/\/(?:www\.)?tenor\.com\/(?:view\/[^/?#]*-)?(\d+)(?:[/?#]|$)/i)?.[1]; return tenorId ? <iframe src={`https://tenor.com/embed/${tenorId}`} title="GIF enviado no chat" loading="lazy" allowFullScreen className="h-64 w-full max-w-sm rounded-lg border-0" /> : <a href={url} target="_blank" rel="noreferrer" className="block"><img src={url} alt="GIF enviado no chat" loading="lazy" className="max-h-72 max-w-full rounded-lg object-contain" /></a>; })() : <p className={cn("whitespace-pre-wrap break-words text-sm", message.deleted_at && "italic opacity-70")}>{message.body}</p>}
           {message.attachment_path && <Attachment message={message} />}
           <div className="mt-1 flex items-center justify-end gap-1 text-[10px] opacity-65">
             {message.edited_at && <span>editada</span>}
