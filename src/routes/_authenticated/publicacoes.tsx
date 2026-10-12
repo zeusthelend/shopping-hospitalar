@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Image as ImageIcon, Pencil, Plus, Save, Trash2, X, ChevronLeft, ChevronRight } from "lucide-react";
+import { Image as ImageIcon, Pencil, Plus, Save, Trash2, X, ChevronLeft, ChevronRight, Volume2, VolumeX } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useMe, uploadSigned } from "@/lib/auth";
@@ -79,6 +79,7 @@ function Page() {
   const [mediaMode, setMediaMode] = useState<"text" | "image" | "video" | "gallery" | "canva">("text");
   const [mediaUrlsText, setMediaUrlsText] = useState("");
   const [videoFile, setVideoFile] = useState<File | null>(null);
+  const [videoAudio, setVideoAudio] = useState<Record<string, boolean>>({});
   const [busy, setBusy] = useState(false);
 
   // Only users explicitly assigned the admin role may manage publications/slides.
@@ -224,7 +225,13 @@ function Page() {
               {urls.map((url, index) => {
                 return isVideoUrl(url)
                   ? <div key={url + index} className={urls.length > 1 ? "w-[85%] shrink-0 snap-center" : "w-full"}>
-                    <video src={url} title={publication.title + " — vídeo em loop"} autoPlay muted loop playsInline controls preload="metadata" className="max-h-[560px] w-full bg-black object-contain" />
+                    <video src={url} title={publication.title + " — vídeo em loop"} autoPlay muted={!videoAudio[publication.id]} loop playsInline controls preload="metadata" className="max-h-[560px] w-full bg-black object-contain" />
+                    <div className="flex justify-end p-2">
+                      <Button type="button" variant="outline" size="sm" onClick={() => setVideoAudio((current) => ({ ...current, [publication.id]: !current[publication.id] }))} aria-label={videoAudio[publication.id] ? "Silenciar vídeo" : "Ativar som do vídeo"}>
+                        {videoAudio[publication.id] ? <VolumeX className="mr-2 h-4 w-4" /> : <Volume2 className="mr-2 h-4 w-4" />}
+                        {videoAudio[publication.id] ? "Silenciar" : "Ativar som"}
+                      </Button>
+                    </div>
                   </div>
                   : isCanvaSiteUrl(url)
                     ? <div key={url + index} className="w-full p-4">
