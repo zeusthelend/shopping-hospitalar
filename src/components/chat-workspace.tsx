@@ -1371,8 +1371,8 @@ async function getChatIceServers(): Promise<RTCIceServer[]> {
   ];
   const meteredDomain = (import.meta.env["VITE_METERED_DOMAIN"] as string | undefined)
     ?.trim()
-    .replace(/^https?:\\/\\//, "")
-    .replace(/\\/$/, "");
+    .replace(/^https?:\/\//, "")
+    .replace(/\/$/, "");
   const meteredApiKey = (import.meta.env["VITE_METERED_TURN_API_KEY"] as string | undefined)?.trim();
 
   if (meteredDomain && meteredApiKey) {
