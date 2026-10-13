@@ -396,6 +396,8 @@ function Conversation({
   const [gifOpen, setGifOpen] = useState(false);
   const [gifUrl, setGifUrl] = useState("");
   const [gifSearch, setGifSearch] = useState("");
+  const [gifResults, setGifResults] = useState<Array<{ id: string; title: string; url: string; preview: string }>>([]);
+  const [gifSearching, setGifSearching] = useState(false);
   const [sending, setSending] = useState(false);
   const [recording, setRecording] = useState(false);
   const [groupProfileOpen, setGroupProfileOpen] = useState(false);
@@ -649,6 +651,46 @@ function Conversation({
       setSending(false);
     }
   }
+  async function searchGifs() {
+    const query = gifSearch.trim();
+    if (!query) return;
+    setGifSearching(true);
+    try {
+      const endpoint = "https://api.giphy.com/v1/gifs/search?api_key=dc6zaTOxFJmzC&q="
+        + encodeURIComponent(query)
+        + "&limit=18&rating=pg&bundle=messaging_non_clips";
+      const response = await fetch(endpoint);
+      if (!response.ok) throw new Error("A busca de GIFs está indisponível no momento.");
+      const payload = await response.json() as {
+        data?: Array<{
+          id?: string;
+          title?: string;
+          images?: {
+            fixed_height?: { url?: string };
+            fixed_height_small_still?: { url?: string };
+          };
+        }>;
+      };
+      const results = (payload.data ?? []).flatMap((item) => {
+        const url = item.images?.fixed_height?.url;
+        if (!url) return [];
+        return [{
+          id: item.id ?? url,
+          title: item.title || "GIF",
+          url,
+          preview: item.images?.fixed_height_small_still?.url ?? url,
+        }];
+      });
+      setGifResults(results);
+      if (!results.length) toast("Nenhum GIF encontrado. Tente outra pesquisa.");
+    } catch (error) {
+      setGifResults([]);
+      toast.error(error instanceof Error ? error.message : "Não foi possível pesquisar GIFs.");
+    } finally {
+      setGifSearching(false);
+    }
+  }
+
   function startEdit(message: MessageRow) {
     setEditing(message);
     setReply(null);
@@ -878,7 +920,65 @@ function Conversation({
           </Button>
         </div>
       )}
-      <Dialog open={gifOpen} onOpenChange={setGifOpen}><DialogContent className="sm:max-w-lg"><DialogHeader><DialogTitle>Enviar GIF</DialogTitle><DialogDescription>Pesquise um GIF e cole o endereço direto do arquivo .gif ou de uma imagem animada HTTPS.</DialogDescription></DialogHeader><div className="space-y-3"><div className="flex gap-2"><Input value={gifSearch} onChange={(e) => setGifSearch(e.target.value)} placeholder="Pesquisar GIFs no Tenor" /><Button type="button" variant="outline" onClick={() => { const q = encodeURIComponent(gifSearch.trim()); if (q) window.open(`https://tenor.com/search/${q}-gifs`, "_blank", "noopener,noreferrer"); }} disabled={!gifSearch.trim()}>Abrir busca</Button></div><div className="flex gap-2"><Input value={gifUrl} onChange={(e) => setGifUrl(e.target.value)} placeholder="Cole o link direto HTTPS do GIF" inputMode="url" onPaste={(e) => { const pasted = e.clipboardData.getData("text").trim(); if (/^https:\/\//i.test(pasted)) setGifUrl(pasted); }} /><Button type="button" variant="outline" onClick={async () => { try { const pasted = await navigator.clipboard.readText(); if (/^https:\/\//i.test(pasted.trim())) setGifUrl(pasted.trim()); else toast.error("A área de transferência não contém um link HTTPS."); } catch { toast.error("Cole o link do GIF no campo acima."); } }}>Colar link</Button></div><p className="text-xs text-muted-foreground">Abra a busca, escolha um GIF, copie o endereço direto da imagem animada e cole aqui. A prévia aparece antes do envio.</p>{/^https:\/\//i.test(gifUrl) && (() => { const tenorId = gifUrl.trim().match(/^https:\/\/(?:www\.)?tenor\.com\/(?:view\/[^/?#]*-)?(\d+)(?:[/?#]|$)/i)?.[1]; return tenorId ? <iframe src={`https://tenor.com/embed/${tenorId}`} title="Prévia animada do GIF" loading="lazy" allowFullScreen className="h-56 w-full rounded-md border-0" /> : <img src={gifUrl.trim()} alt="Prévia do GIF" className="max-h-56 max-w-full rounded-md object-contain" onError={(e) => { e.currentTarget.style.display = "none"; }} />; })()}<Button type="button" className="w-full" disabled={!/^https:\/\//i.test(gifUrl)} onClick={() => { setText(`GIF:${gifUrl.trim()}`); setFile(null); setGifOpen(false); setGifUrl(""); }}>Usar este GIF</Button></div></DialogContent></Dialog>
+      <Dialog open={gifOpen} onOpenChange={setGifOpen}>
+        <DialogContent className="max-h-[85dvh] overflow-y-auto sm:max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Enviar GIF</DialogTitle>
+            <DialogDescription>Pesquise e escolha um GIF para enviar diretamente na conversa, sem precisar copiar links.</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-3">
+            <div className="flex gap-2">
+              <Input
+                value={gifSearch}
+                onChange={(event) => setGifSearch(event.target.value)}
+                onKeyDown={(event) => { if (event.key === "Enter") { event.preventDefault(); void searchGifs(); } }}
+                placeholder="Ex.: bom dia, obrigado, parabéns"
+                aria-label="Pesquisar GIFs"
+              />
+              <Button type="button" onClick={() => void searchGifs()} disabled={!gifSearch.trim() || gifSearching}>
+                {gifSearching ? "Buscando..." : "Pesquisar"}
+              </Button>
+            </div>
+            {gifSearching && <p className="py-4 text-center text-sm text-muted-foreground">Procurando GIFs...</p>}
+            {gifResults.length > 0 && (
+              <div className="grid max-h-[42dvh] grid-cols-2 gap-2 overflow-y-auto sm:grid-cols-3">
+                {gifResults.map((gif) => (
+                  <button
+                    type="button"
+                    key={gif.id}
+                    onClick={() => {
+                      setText("GIF:" + gif.url);
+                      setFile(null);
+                      setGifOpen(false);
+                      setGifResults([]);
+                      setGifUrl("");
+                    }}
+                    className="overflow-hidden rounded-lg border bg-muted text-left transition hover:border-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+                    aria-label={"Enviar GIF: " + gif.title}
+                    title={gif.title}
+                  >
+                    <img src={gif.preview} alt="" loading="lazy" className="h-28 w-full object-cover" />
+                    <span className="block truncate px-2 py-1.5 text-xs">{gif.title}</span>
+                  </button>
+                ))}
+              </div>
+            )}
+            {!gifSearching && gifSearch.trim() && gifResults.length === 0 && (
+              <p className="text-center text-xs text-muted-foreground">Nenhum resultado exibido. Tente outra palavra ou use um link direto.</p>
+            )}
+            <details className="rounded-lg border p-3">
+              <summary className="cursor-pointer text-sm font-medium">Usar um link direto (opcional)</summary>
+              <div className="mt-3 space-y-2">
+                <Input value={gifUrl} onChange={(event) => setGifUrl(event.target.value)} placeholder="Cole aqui o link HTTPS do GIF" inputMode="url" />
+                {/^https:\/\//i.test(gifUrl) && <img src={gifUrl.trim()} alt="Prévia do GIF" className="max-h-40 max-w-full rounded-md object-contain" onError={(event) => { event.currentTarget.style.display = "none"; }} />}
+                <Button type="button" variant="outline" className="w-full" disabled={!/^https:\/\//i.test(gifUrl)} onClick={() => { setText("GIF:" + gifUrl.trim()); setFile(null); setGifOpen(false); setGifUrl(""); }}>
+                  Usar este link
+                </Button>
+              </div>
+            </details>
+          </div>
+        </DialogContent>
+      </Dialog>
       <div className="shrink-0 border-t bg-background/95 p-2 pb-[calc(0.5rem+env(safe-area-inset-bottom))] sm:p-3 sm:pb-4 lg:backdrop-blur-sm">
         <div className="mx-auto flex max-w-3xl items-end gap-2">
           <label
