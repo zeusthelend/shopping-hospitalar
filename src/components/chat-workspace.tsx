@@ -1454,7 +1454,10 @@ function CallControl({
     await new Promise<void>((resolve, reject) => {
       const timeout = window.setTimeout(() => {
         peer.removeEventListener("icegatheringstatechange", onStateChange);
-        reject(new Error("A rede demorou para preparar a chamada. Tente novamente."));
+        // Do not block call signaling forever when a mobile network keeps ICE gathering open.
+        // Send the candidates gathered so far; the remote peer can then receive the incoming call.
+        console.warn("ICE gathering timed out; continuing with candidates gathered so far.");
+        resolve();
       }, 25_000);
       const onStateChange = () => {
         if (peer.iceGatheringState !== "complete") return;
