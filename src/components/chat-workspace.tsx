@@ -218,7 +218,7 @@ export function ChatWorkspace({ conversationId }: { conversationId?: string | un
     },
   });
   return (
-    <div className="overflow-hidden rounded-2xl border border-border/70 bg-card shadow-xl shadow-primary/5 lg:grid lg:h-[calc(100vh-7.5rem)] lg:grid-cols-[340px_minmax(0,1fr)]">
+    <div className={cn("overflow-hidden bg-card lg:grid lg:h-[calc(100vh-7.5rem)] lg:grid-cols-[340px_minmax(0,1fr)]", conversationId ? "fixed inset-0 z-50 h-[100dvh] w-screen rounded-none border-0 shadow-none lg:static lg:h-[calc(100vh-7.5rem)] lg:w-auto lg:rounded-2xl lg:border lg:border-border/70 lg:shadow-xl lg:shadow-primary/5" : "rounded-2xl border border-border/70 shadow-xl shadow-primary/5")}>
       {me?.profile && memberships.map((membership) => (
         <AudioCallControl
           key={`incoming-${membership.conversation_id}`}
@@ -313,7 +313,7 @@ export function ChatWorkspace({ conversationId }: { conversationId?: string | un
           </div>
         </ScrollArea>
       </aside>
-      <main className={cn("min-w-0 bg-gradient-to-br from-background via-background to-primary/[0.025]", !conversationId && "hidden lg:grid lg:place-items-center")}>
+      <main className={cn("min-h-0 min-w-0 bg-gradient-to-br from-background via-background to-primary/[0.025]", conversationId && "h-full", !conversationId && "hidden lg:grid lg:place-items-center")}>
         {conversationId && active && me?.profile ? (
           <Conversation
             conversation={active}
@@ -443,11 +443,12 @@ function Conversation({
           "*, profiles!chat_messages_sender_id_fkey(id,full_name,avatar_url,status,last_seen_at), chat_reactions(emoji,user_id)",
         )
         .eq("conversation_id", id)
-        .order("created_at");
+        .order("created_at", { ascending: false })
+        .limit(300);
       if (error) throw error;
-      return data as MessageRow[];
+      return (data ?? []).reverse() as MessageRow[];
     },
-    refetchInterval: 10_000,
+    refetchInterval: 60_000,
   });
   useEffect(() => {
     const channel = supabase
@@ -517,7 +518,7 @@ function Conversation({
     return () => document.removeEventListener("visibilitychange", markRead);
   }, [id, latestMessageAt, me.id]);
   useEffect(() => {
-    bottomRef.current?.scrollIntoView({ behavior: "smooth" });
+    bottomRef.current?.scrollIntoView({ behavior: "auto", block: "end" });
   }, [messages.length]);
   useEffect(
     () => () => {
@@ -646,8 +647,8 @@ function Conversation({
     inputRef.current?.focus();
   }
   return (
-    <div className="flex h-[calc(100vh-7.5rem)] min-h-[520px] flex-col">
-      <header className="flex h-[76px] items-center gap-3 border-b border-border/70 bg-background/90 px-3 shadow-sm backdrop-blur-sm sm:px-5">
+    <div className="flex h-[100dvh] min-h-0 flex-col lg:h-[calc(100vh-7.5rem)]">
+      <header className="flex h-14 shrink-0 items-center gap-2 border-b border-border/70 bg-background/95 px-2 shadow-sm sm:h-[76px] sm:gap-3 sm:px-5 lg:backdrop-blur-sm">
         <Button asChild variant="ghost" size="icon" className="lg:hidden">
           <Link to="/chat">
             <ArrowLeft />
@@ -738,9 +739,9 @@ function Conversation({
           </DialogContent>
         </Dialog>
       </header>
-      <ScrollArea className="flex-1">
+      <ScrollArea className="min-h-0 flex-1">
         <div className={cn("min-h-full bg-cover bg-center bg-fixed transition-colors", wallpaper === "custom" && customWallpaper ? "" : wallpaper === "mint" ? "bg-emerald-50 dark:bg-emerald-950/30" : wallpaper === "blue" ? "bg-sky-50 dark:bg-sky-950/30" : wallpaper === "rose" ? "bg-rose-50 dark:bg-rose-950/20" : wallpaper === "sand" ? "bg-amber-50 dark:bg-amber-950/20" : wallpaper === "lavender" ? "bg-violet-50 dark:bg-violet-950/30" : wallpaper === "slate" ? "bg-slate-100 dark:bg-slate-900" : wallpaper === "gradient-violet" ? "bg-gradient-to-br from-violet-100 via-fuchsia-50 to-sky-100 dark:from-violet-950/40 dark:via-background dark:to-sky-950/40" : wallpaper === "gradient-sunset" ? "bg-gradient-to-br from-orange-100 via-rose-50 to-violet-100 dark:from-orange-950/40 dark:via-rose-950/20 dark:to-violet-950/40" : "bg-gradient-to-b from-primary/[0.07] via-background to-primary/[0.025]")} style={wallpaper === "custom" && customWallpaper ? { backgroundImage: "linear-gradient(rgba(255,255,255,.78),rgba(255,255,255,.78)), url(" + customWallpaper + ")" } : undefined}>
-        <div className="mx-auto max-w-3xl space-y-5 p-4 sm:p-6">
+        <div className="mx-auto max-w-3xl space-y-3 p-2.5 sm:space-y-5 sm:p-6">
           {messagesError ? (
             <div className="rounded-lg border border-destructive/30 bg-destructive/5 p-4 text-sm">
               <p className="text-destructive">Não foi possível carregar as mensagens.</p>
@@ -821,7 +822,7 @@ function Conversation({
         </div>
       )}
       <Dialog open={gifOpen} onOpenChange={setGifOpen}><DialogContent className="sm:max-w-lg"><DialogHeader><DialogTitle>Enviar GIF</DialogTitle><DialogDescription>Pesquise um GIF e cole o endereço direto do arquivo .gif ou de uma imagem animada HTTPS.</DialogDescription></DialogHeader><div className="space-y-3"><div className="flex gap-2"><Input value={gifSearch} onChange={(e) => setGifSearch(e.target.value)} placeholder="Pesquisar GIFs no Tenor" /><Button type="button" variant="outline" onClick={() => { const q = encodeURIComponent(gifSearch.trim()); if (q) window.open(`https://tenor.com/search/${q}-gifs`, "_blank", "noopener,noreferrer"); }} disabled={!gifSearch.trim()}>Abrir busca</Button></div><div className="flex gap-2"><Input value={gifUrl} onChange={(e) => setGifUrl(e.target.value)} placeholder="Cole o link direto HTTPS do GIF" inputMode="url" onPaste={(e) => { const pasted = e.clipboardData.getData("text").trim(); if (/^https:\/\//i.test(pasted)) setGifUrl(pasted); }} /><Button type="button" variant="outline" onClick={async () => { try { const pasted = await navigator.clipboard.readText(); if (/^https:\/\//i.test(pasted.trim())) setGifUrl(pasted.trim()); else toast.error("A área de transferência não contém um link HTTPS."); } catch { toast.error("Cole o link do GIF no campo acima."); } }}>Colar link</Button></div><p className="text-xs text-muted-foreground">Abra a busca, escolha um GIF, copie o endereço direto da imagem animada e cole aqui. A prévia aparece antes do envio.</p>{/^https:\/\//i.test(gifUrl) && (() => { const tenorId = gifUrl.trim().match(/^https:\/\/(?:www\.)?tenor\.com\/(?:view\/[^/?#]*-)?(\d+)(?:[/?#]|$)/i)?.[1]; return tenorId ? <iframe src={`https://tenor.com/embed/${tenorId}`} title="Prévia animada do GIF" loading="lazy" allowFullScreen className="h-56 w-full rounded-md border-0" /> : <img src={gifUrl.trim()} alt="Prévia do GIF" className="max-h-56 max-w-full rounded-md object-contain" onError={(e) => { e.currentTarget.style.display = "none"; }} />; })()}<Button type="button" className="w-full" disabled={!/^https:\/\//i.test(gifUrl)} onClick={() => { setText(`GIF:${gifUrl.trim()}`); setFile(null); setGifOpen(false); setGifUrl(""); }}>Usar este GIF</Button></div></DialogContent></Dialog>
-      <div className="border-t p-3 sm:p-4">
+      <div className="shrink-0 border-t bg-background/95 p-2 pb-[calc(0.5rem+env(safe-area-inset-bottom))] sm:p-3 sm:pb-4 lg:backdrop-blur-sm">
         <div className="mx-auto flex max-w-3xl items-end gap-2">
           <label
             className="grid h-9 w-9 shrink-0 cursor-pointer place-items-center rounded-md hover:bg-muted"
