@@ -30,7 +30,7 @@ function MinhasVendas() {
   const [from, setFrom] = useState("");
   const [to, setTo] = useState("");
   const [selectedSeller, setSelectedSeller] = useState("all");
-  const isManager = !!me?.canManage;
+  const isManager = !!me?.canViewAllSales;
   const userId = me?.profile?.id;
   const { data: sellers = [] } = useQuery({
     queryKey: ["dav-sellers-history"],
