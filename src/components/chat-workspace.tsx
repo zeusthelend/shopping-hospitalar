@@ -1369,10 +1369,11 @@ async function getChatIceServers(): Promise<RTCIceServer[]> {
     { urls: "stun:stun1.l.google.com:19302" },
     { urls: "stun:stun.cloudflare.com:3478" },
   ];
-  const meteredDomain = (import.meta.env["VITE_METERED_DOMAIN"] as string | undefined)
-    ?.trim()
-    .replace(/^https?:\/\//, "")
-    .replace(/\/$/, "");
+  const meteredDomainRaw = (import.meta.env["VITE_METERED_DOMAIN"] as string | undefined)?.trim();
+  const meteredDomain = meteredDomainRaw
+    ?.replace("https://", "")
+    .replace("http://", "")
+    .split("/")[0];
   const meteredApiKey = (import.meta.env["VITE_METERED_TURN_API_KEY"] as string | undefined)?.trim();
 
   if (meteredDomain && meteredApiKey) {
