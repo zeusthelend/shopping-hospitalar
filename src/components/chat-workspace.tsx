@@ -216,7 +216,7 @@ export function ChatWorkspace({ conversationId }: { conversationId?: string | un
     },
   });
   return (
-    <div className="overflow-hidden rounded-lg border bg-card shadow-card lg:grid lg:h-[calc(100vh-7.5rem)] lg:grid-cols-[320px_minmax(0,1fr)]">
+    <div className="overflow-hidden rounded-2xl border border-border/70 bg-card shadow-xl shadow-primary/5 lg:grid lg:h-[calc(100vh-7.5rem)] lg:grid-cols-[340px_minmax(0,1fr)]">
       {me?.profile && memberships.map((membership) => (
         <AudioCallControl
           key={`incoming-${membership.conversation_id}`}
@@ -229,11 +229,11 @@ export function ChatWorkspace({ conversationId }: { conversationId?: string | un
           incomingOnly
         />
       ))}
-      <aside className={cn("border-r", conversationId && "hidden lg:block")}>
-        <div className="flex h-16 items-center justify-between border-b px-4">
+      <aside className={cn("border-r border-border/70 bg-gradient-to-b from-primary/[0.035] via-background to-background", conversationId && "hidden lg:block")}>
+        <div className="flex h-[76px] items-center justify-between border-b border-border/70 bg-background/90 px-4 backdrop-blur-sm">
           <div>
-            <h1 className="font-bold">Chat</h1>
-            <p className="text-xs text-muted-foreground">{memberships.length} conversas</p>
+            <div className="flex items-center gap-2"><div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-primary text-primary-foreground shadow-md shadow-primary/20"><MessageCircle className="h-5 w-5" /></div><div><h1 className="font-bold tracking-tight">Mensagens</h1><p className="text-[11px] font-medium text-muted-foreground">Shopping Hospitalar</p></div></div>
+            <p className="mt-0.5 text-xs text-muted-foreground">{memberships.length} {memberships.length === 1 ? "conversa" : "conversas"} · comunicação interna</p>
           </div>
           <div className="flex items-center gap-2">
             <FavoriteMessagesDialog userId={me?.profile?.id} />
@@ -243,13 +243,13 @@ export function ChatWorkspace({ conversationId }: { conversationId?: string | un
             />
           </div>
         </div>
-        <div className="p-3">
+        <div className="px-3 pb-3 pt-4">
           <div className="relative">
             <Search className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
             <Input
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              className="h-9 pl-9"
+              className="h-10 rounded-xl border-border/70 bg-background pl-9 shadow-sm transition-shadow focus-visible:shadow-md"
               placeholder="Buscar conversa"
             />
           </div>
@@ -279,7 +279,7 @@ export function ChatWorkspace({ conversationId }: { conversationId?: string | un
                     key={m.conversation_id}
                     to="/chat/$conversationId"
                     params={{ conversationId: m.conversation_id }}
-                    className="flex items-center gap-3 rounded-md p-3 hover:bg-muted"
+                    className="group flex items-center gap-3 rounded-xl border border-transparent p-3 transition-all duration-200 hover:border-border/70 hover:bg-background hover:shadow-sm"
                     activeProps={{ className: "!bg-primary/10" }}
                   >
                     <ConversationAvatar
@@ -311,7 +311,7 @@ export function ChatWorkspace({ conversationId }: { conversationId?: string | un
           </div>
         </ScrollArea>
       </aside>
-      <main className={cn("min-w-0", !conversationId && "hidden lg:grid lg:place-items-center")}>
+      <main className={cn("min-w-0 bg-gradient-to-br from-background via-background to-primary/[0.025]", !conversationId && "hidden lg:grid lg:place-items-center")}>
         {conversationId && active && me?.profile ? (
           <Conversation
             conversation={active}
