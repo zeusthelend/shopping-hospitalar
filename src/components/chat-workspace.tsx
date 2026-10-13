@@ -31,6 +31,7 @@ import {
   UserMinus,
   UserPlus,
   Users,
+  Video,
 } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
@@ -220,7 +221,7 @@ export function ChatWorkspace({ conversationId }: { conversationId?: string | un
   return (
     <div className={cn("overflow-hidden bg-card lg:grid lg:h-[calc(100vh-7.5rem)] lg:grid-cols-[340px_minmax(0,1fr)]", conversationId ? "fixed inset-0 z-50 h-[100dvh] w-screen rounded-none border-0 shadow-none lg:static lg:h-[calc(100vh-7.5rem)] lg:w-auto lg:rounded-2xl lg:border lg:border-border/70 lg:shadow-xl lg:shadow-primary/5" : "rounded-2xl border border-border/70 shadow-xl shadow-primary/5")}>
       {me?.profile && memberships.map((membership) => (
-        <AudioCallControl
+        <CallControl
           key={`incoming-${membership.conversation_id}`}
           conversationId={membership.conversation_id}
           userId={me.profile.id}
@@ -731,6 +732,14 @@ function Conversation({
             </DialogContent>
           )}
         </Dialog>
+        <CallControl
+          conversationId={id}
+          userId={me.id}
+          targets={participants
+            .filter((participant) => participant.user_id !== me.id)
+            .map((participant) => participant.profiles)
+            .filter((profile): profile is ProfileLite => !!profile)}
+        />
         <Button
           type="button"
           variant="ghost"
@@ -1269,7 +1278,7 @@ type ChatCallRow = {
   created_at: string;
 };
 
-function AudioCallControl({
+function CallControl({
   conversationId,
   userId,
   targets,
@@ -1285,9 +1294,13 @@ function AudioCallControl({
   const [callState, setCallState] = useState<"ringing" | "connecting" | "connected" | null>(null);
   const [caller, setCaller] = useState<ProfileLite | null>(null);
   const [audioPlaybackBlocked, setAudioPlaybackBlocked] = useState(false);
+  const [callType, setCallType] = useState<"audio" | "video">("audio");
   const peerRef = useRef<RTCPeerConnection | null>(null);
   const localStreamRef = useRef<MediaStream | null>(null);
+  const remoteStreamRef = useRef<MediaStream | null>(null);
   const remoteAudioRef = useRef<HTMLAudioElement>(null);
+  const remoteVideoRef = useRef<HTMLVideoElement>(null);
+  const localVideoRef = useRef<HTMLVideoElement>(null);
   const queryErrorShown = useRef(false);
 
   function closePeer() {
@@ -1296,13 +1309,19 @@ function AudioCallControl({
     localStreamRef.current?.getTracks().forEach((track) => track.stop());
     localStreamRef.current = null;
     if (remoteAudioRef.current) remoteAudioRef.current.srcObject = null;
+    if (remoteVideoRef.current) remoteVideoRef.current.srcObject = null;
+    if (localVideoRef.current) localVideoRef.current.srcObject = null;
+    remoteStreamRef.current = null;
   }
 
-  async function createPeer(): Promise<RTCPeerConnection> {
+  async function createPeer(mediaType: "audio" | "video"): Promise<RTCPeerConnection> {
     if (!navigator.mediaDevices?.getUserMedia) {
-      throw new Error("Este dispositivo não permite chamadas de áudio neste navegador.");
+      throw new Error("Este dispositivo não permite chamadas neste navegador.");
     }
-    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    const stream = await navigator.mediaDevices.getUserMedia({
+      audio: true,
+      video: mediaType === "video" ? { facingMode: "user" } : false,
+    });
     localStreamRef.current = stream;
     const peer = new RTCPeerConnection({
       iceServers: [{ urls: "stun:stun.l.google.com:19302" }],
@@ -1310,11 +1329,15 @@ function AudioCallControl({
     peerRef.current = peer;
     stream.getTracks().forEach((track) => peer.addTrack(track, stream));
     peer.ontrack = (event) => {
-      if (remoteAudioRef.current && event.streams[0]) {
-        remoteAudioRef.current.srcObject = event.streams[0];
-        void remoteAudioRef.current.play().catch(() => {
-          setAudioPlaybackBlocked(true);
-        });
+      const stream = event.streams[0];
+      if (!stream) return;
+      remoteStreamRef.current = stream;
+      if (mediaType === "video" && remoteVideoRef.current) {
+        remoteVideoRef.current.srcObject = stream;
+        void remoteVideoRef.current.play().catch(() => setAudioPlaybackBlocked(true));
+      } else if (remoteAudioRef.current) {
+        remoteAudioRef.current.srcObject = stream;
+        void remoteAudioRef.current.play().catch(() => setAudioPlaybackBlocked(true));
       }
     };
     peer.onconnectionstatechange = () => {
@@ -1453,6 +1476,17 @@ function AudioCallControl({
     };
   }, [callId]);
 
+  useEffect(() => {
+    if (!callId) return;
+    if (callType === "video" && localVideoRef.current && localStreamRef.current) {
+      localVideoRef.current.srcObject = localStreamRef.current;
+    }
+    if (callType === "video" && remoteVideoRef.current && remoteStreamRef.current) {
+      remoteVideoRef.current.srcObject = remoteStreamRef.current;
+      void remoteVideoRef.current.play().catch(() => setAudioPlaybackBlocked(true));
+    }
+  }, [callId, callType]);
+
   useEffect(
     () => () => {
       closePeer();
@@ -1460,12 +1494,13 @@ function AudioCallControl({
     [],
   );
 
-  async function startCall(target: ProfileLite) {
+  async function startCall(target: ProfileLite, mediaType: "audio" | "video") {
     if (callId || !target) return;
     try {
       setCaller(target);
+      setCallType(mediaType);
       setCallState("connecting");
-      const peer = await createPeer();
+      const peer = await createPeer(mediaType);
       const offer = await peer.createOffer();
       await peer.setLocalDescription(offer);
       await gatherIce(peer);
@@ -1491,9 +1526,11 @@ function AudioCallControl({
   async function acceptCall() {
     if (!incoming) return;
     try {
+      const mediaType = incoming.offer.includes("m=video") ? "video" : "audio";
+      setCallType(mediaType);
       setCaller(targets.find((target) => target.id === incoming.caller_id) ?? null);
       setCallState("connecting");
-      const peer = await createPeer();
+      const peer = await createPeer(mediaType);
       await peer.setRemoteDescription({ type: "offer", sdp: incoming.offer });
       const answer = await peer.createAnswer();
       await peer.setLocalDescription(answer);
@@ -1549,6 +1586,7 @@ function AudioCallControl({
   }
 
   const singleTarget = targets.length === 1 ? targets[0] : undefined;
+  const incomingIsVideo = incoming?.offer.includes("m=video") ?? false;
 
   return (
     <>
@@ -1593,46 +1631,48 @@ function AudioCallControl({
           </Button>
         </>
       ) : !incomingOnly && singleTarget ? (
-        <Button
-          type="button"
-          variant="ghost"
-          size="icon"
-          onClick={() => void startCall(singleTarget)}
-          aria-label={`Ligar para ${singleTarget.full_name}`}
-          title={`Ligar para ${singleTarget.full_name}`}
-        >
-          <Phone />
-        </Button>
+        <>
+          <Button type="button" variant="ghost" size="icon" onClick={() => void startCall(singleTarget, "audio")} aria-label={`Ligar por áudio para ${singleTarget.full_name}`} title={`Ligar por áudio para ${singleTarget.full_name}`}>
+            <Phone />
+          </Button>
+          <Button type="button" variant="ghost" size="icon" onClick={() => void startCall(singleTarget, "video")} aria-label={`Ligar por vídeo para ${singleTarget.full_name}`} title={`Ligar por vídeo para ${singleTarget.full_name}`}>
+            <Video />
+          </Button>
+        </>
       ) : !incomingOnly && targets.length > 1 ? (
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <Button type="button" variant="ghost" size="icon" aria-label="Iniciar chamada de áudio">
+            <Button type="button" variant="ghost" size="icon" aria-label="Iniciar chamada de áudio ou vídeo" title="Iniciar chamada">
               <Phone />
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
-            {targets.map((target) => (
-              <DropdownMenuItem key={target.id} onClick={() => void startCall(target)}>
-                <Phone />
-                Ligar para {target.full_name}
-              </DropdownMenuItem>
-            ))}
+            {targets.flatMap((target) => [
+              <DropdownMenuItem key={target.id + "-audio"} onClick={() => void startCall(target, "audio")}><Phone />Áudio: {target.full_name}</DropdownMenuItem>,
+              <DropdownMenuItem key={target.id + "-video"} onClick={() => void startCall(target, "video")}><Video />Vídeo: {target.full_name}</DropdownMenuItem>,
+            ])}
           </DropdownMenuContent>
         </DropdownMenu>
       ) : null}
-      <audio ref={remoteAudioRef} autoPlay playsInline className="sr-only" />
+      <audio ref={remoteAudioRef} autoPlay playsInline className={callType === "video" ? "hidden" : "sr-only"} />
       <Dialog open={!!callId} onOpenChange={(open) => !open && void endCall()}>
-        <DialogContent className="sm:max-w-sm">
+        <DialogContent className={callType === "video" ? "max-h-[90dvh] overflow-y-auto sm:max-w-2xl" : "sm:max-w-sm"}>
+          {callType === "video" && (
+            <div className="relative overflow-hidden rounded-xl bg-black">
+              <video ref={remoteVideoRef} autoPlay playsInline className="aspect-video max-h-[55dvh] w-full object-contain" />
+              <video ref={localVideoRef} autoPlay muted playsInline className="absolute bottom-3 right-3 aspect-video w-28 rounded-lg border border-white/60 bg-black object-cover sm:w-40" />
+            </div>
+          )}
           <div className="flex flex-col items-center py-5 text-center">
-            <Avatar className="mb-5 h-28 w-28 ring-4 ring-primary/15">
+            {callType !== "video" && <Avatar className="mb-5 h-28 w-28 ring-4 ring-primary/15">
               <AvatarImage src={caller?.avatar_url ?? undefined} alt={caller?.full_name ?? "Foto do contato"} />
               <AvatarFallback className="text-3xl">{initials(caller?.full_name ?? "Contato")}</AvatarFallback>
-            </Avatar>
+            </Avatar>}
             <DialogHeader className="items-center">
-              <DialogTitle className="text-xl">{caller?.full_name ?? "Chamada de áudio"}</DialogTitle>
+              <DialogTitle className="text-xl">{caller?.full_name ?? (callType === "video" ? "Chamada de vídeo" : "Chamada de áudio")}</DialogTitle>
               <DialogDescription>
                 {callState === "connected"
-                  ? "Em chamada"
+                  ? (callType === "video" ? "Chamada de vídeo conectada" : "Em chamada")
                   : callState === "ringing"
                     ? "Chamando..."
                     : "Conectando..."}
@@ -1680,7 +1720,7 @@ function AudioCallControl({
               <DialogTitle className="text-xl">{
                 targets.find((target) => target.id === incoming?.caller_id)?.full_name ?? "Um participante"
               }</DialogTitle>
-              <DialogDescription>Chamada de áudio recebida</DialogDescription>
+              <DialogDescription>{incomingIsVideo ? "Chamada de vídeo recebida" : "Chamada de áudio recebida"}</DialogDescription>
             </DialogHeader>
             <div className="mt-8 flex w-full justify-center gap-10">
               <div className="flex flex-col items-center gap-2">
@@ -1691,7 +1731,7 @@ function AudioCallControl({
               </div>
               <div className="flex flex-col items-center gap-2">
                 <Button type="button" size="lg" className="h-14 w-14 rounded-full bg-success hover:bg-success/90" onClick={() => void acceptCall()} aria-label="Atender chamada">
-                  <Phone className="h-6 w-6" />
+                  {incomingIsVideo ? <Video className="h-6 w-6" /> : <Phone className="h-6 w-6" />}
                 </Button>
                 <span className="text-xs text-muted-foreground">Atender</span>
               </div>
