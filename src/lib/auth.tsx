@@ -45,7 +45,7 @@ export function useMe() {
       const canManage = r.some((x) => x === "admin" || x === "diretor" || x === "gerente");
       const positionName = String((profile as (typeof profile & { positions?: { name?: string } | null }) | null)?.positions?.name ?? "")
         .normalize("NFD")
-        .replace(/[\\u0300-\\u036f]/g, "")
+        .replace(/[\u0300-\u036f]/g, "")
         .toLowerCase();
       const isStockLead = positionName.includes("encarregado") && positionName.includes("estoque");
       return {
