@@ -34,7 +34,7 @@ export function useMe() {
     enabled: !!uid,
     queryFn: async () => {
       const [profileResult, rolesResult] = await Promise.all([
-        supabase.from("profiles").select("*").eq("id", uid!).maybeSingle(),
+        supabase.from("profiles").select("*, positions(name)").eq("id", uid!).maybeSingle(),
         supabase.from("user_roles").select("role").eq("user_id", uid!),
       ]);
       if (profileResult.error) throw profileResult.error;
@@ -42,11 +42,18 @@ export function useMe() {
       const profile = profileResult.data;
       const roles = rolesResult.data;
       const r = (roles ?? []).map((x) => x.role as AppRole);
+      const canManage = r.some((x) => x === "admin" || x === "diretor" || x === "gerente");
+      const positionName = String((profile as (typeof profile & { positions?: { name?: string } | null }) | null)?.positions?.name ?? "")
+        .normalize("NFD")
+        .replace(/[\\u0300-\\u036f]/g, "")
+        .toLowerCase();
+      const isStockLead = positionName.includes("encarregado") && positionName.includes("estoque");
       return {
         profile,
         roles: r,
         isAdmin: r.includes("admin"),
-        canManage: r.some((x) => x === "admin" || x === "diretor" || x === "gerente"),
+        canManage,
+        canViewAllSales: canManage || isStockLead,
       };
     },
   });
