@@ -616,7 +616,7 @@ function Conversation({
   }
   return (
     <div className="flex h-[calc(100vh-7.5rem)] min-h-[520px] flex-col">
-      <header className="flex h-16 items-center gap-3 border-b px-3 sm:px-5">
+      <header className="flex h-[76px] items-center gap-3 border-b border-border/70 bg-background/90 px-3 shadow-sm backdrop-blur-sm sm:px-5">
         <Button asChild variant="ghost" size="icon" className="lg:hidden">
           <Link to="/chat">
             <ArrowLeft />
@@ -629,12 +629,12 @@ function Conversation({
               className="flex min-w-0 flex-1 items-center gap-3 text-left"
               aria-label={conversation.chat_conversations?.kind === "group" ? "Ver perfil do grupo" : title}
             >
-              <Avatar className="h-9 w-9 shrink-0">
+              <Avatar className="h-11 w-11 shrink-0 ring-2 ring-primary/10 ring-offset-2 ring-offset-background">
                 <AvatarImage src={conversation.chat_conversations?.kind === "group" ? (conversation.chat_conversations.image_url ?? undefined) : (participants.find((p) => p.user_id !== me.id)?.profiles?.avatar_url ?? undefined)} alt={title} />
                 <AvatarFallback>{conversation.chat_conversations?.kind === "group" ? <Users className="h-4 w-4" /> : initials(title)}</AvatarFallback>
               </Avatar>
               <span className="min-w-0 flex-1">
-                <span className="block truncate font-bold">{title}</span>
+                <span className="block truncate font-bold tracking-tight">{title}</span>
                 <span className="block text-xs text-muted-foreground">
                   {conversation.chat_conversations?.kind === "group"
                     ? `${participants.length} participantes · ver perfil`
@@ -699,8 +699,8 @@ function Conversation({
             .map((participant) => participant.profiles!)}
         />
       </header>
-      <ScrollArea className="flex-1">
-        <div className="mx-auto max-w-3xl space-y-4 p-4 sm:p-6">
+      <ScrollArea className="flex-1 bg-gradient-to-b from-primary/[0.025] via-background to-background">
+        <div className="mx-auto max-w-3xl space-y-5 p-4 sm:p-6">
           {messagesError ? (
             <div className="rounded-lg border border-destructive/30 bg-destructive/5 p-4 text-sm">
               <p className="text-destructive">Não foi possível carregar as mensagens.</p>
@@ -742,7 +742,7 @@ function Conversation({
         </div>
       </ScrollArea>
       {(reply || editing) && (
-        <div className="mx-auto flex w-full max-w-3xl items-center gap-3 border-t bg-muted/50 px-4 py-2 text-xs">
+        <div className="mx-auto flex w-full max-w-3xl items-center gap-3 border-t border-primary/10 bg-primary/[0.035] px-4 py-3 text-xs">
           <div className="min-w-0 flex-1 border-l-2 border-highlight pl-3">
             <strong>
               {editing
@@ -817,7 +817,7 @@ function Conversation({
                 void send();
               }
             }}
-            className="max-h-36 min-h-10 resize-none"
+            className="max-h-36 min-h-12 resize-none rounded-xl border-border/70 bg-background px-4 py-3 shadow-sm focus-visible:ring-primary/30"
             placeholder="Escreva uma mensagem"
           />
           <Button
@@ -906,8 +906,8 @@ function MessageItem({
       <div className={cn("max-w-[85%] sm:max-w-[72%]", mine && "items-end")}>
         <div
           className={cn(
-            "group relative rounded-lg px-3 py-2",
-            mine ? "bg-primary text-primary-foreground" : "bg-muted text-foreground",
+            "group relative rounded-2xl px-4 py-3 shadow-sm transition-shadow duration-200 hover:shadow-md",
+            mine ? "rounded-br-md bg-primary text-primary-foreground shadow-primary/10" : "rounded-bl-md border border-border/60 bg-card text-foreground shadow-sm",
           )}
         >
           <div className="mb-1 flex items-center gap-2 text-[11px] opacity-70">
