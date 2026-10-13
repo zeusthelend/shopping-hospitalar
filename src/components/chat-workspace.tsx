@@ -399,6 +399,8 @@ function Conversation({
   const [recording, setRecording] = useState(false);
   const [groupProfileOpen, setGroupProfileOpen] = useState(false);
   const [wallpaperOpen, setWallpaperOpen] = useState(false);
+  const [messageSearchOpen, setMessageSearchOpen] = useState(false);
+  const [messageSearch, setMessageSearch] = useState("");
   const [wallpaper, setWallpaper] = useState("gradient");
   const [customWallpaper, setCustomWallpaper] = useState<string | null>(null);
   const wallpaperInputRef = useRef<HTMLInputElement>(null);
@@ -500,6 +502,12 @@ function Conversation({
   });
   const latestMessage = messages.at(-1);
   const latestMessageAt = latestMessage?.created_at;
+  const filteredMessages = messages.filter((message) => {
+    const query = messageSearch.trim().toLocaleLowerCase("pt-BR");
+    if (!query) return true;
+    return [message.body, message.profiles?.full_name, message.attachment_name]
+      .some((value) => (value ?? "").toLocaleLowerCase("pt-BR").includes(query));
+  });
   useEffect(() => {
     if (!latestMessageAt) return;
     const markRead = () => {
@@ -723,6 +731,20 @@ function Conversation({
             </DialogContent>
           )}
         </Dialog>
+        <Button
+          type="button"
+          variant="ghost"
+          size="icon"
+          className="shrink-0 rounded-xl"
+          aria-label={messageSearchOpen ? "Fechar pesquisa na conversa" : "Pesquisar mensagens nesta conversa"}
+          title="Pesquisar mensagens"
+          onClick={() => {
+            setMessageSearchOpen((open) => !open);
+            setMessageSearch("");
+          }}
+        >
+          <Search className="h-5 w-5" />
+        </Button>
         <Dialog open={wallpaperOpen} onOpenChange={setWallpaperOpen}>
           <DialogTrigger asChild>
             <Button variant="ghost" size="icon" className="shrink-0 rounded-xl" aria-label="Personalizar fundo do chat" title="Personalizar fundo do chat"><Palette className="h-5 w-5" /></Button>
@@ -739,6 +761,27 @@ function Conversation({
           </DialogContent>
         </Dialog>
       </header>
+      {messageSearchOpen && (
+        <div className="flex shrink-0 items-center gap-2 border-b border-border/70 bg-background px-3 py-2 sm:px-5">
+          <Search className="h-4 w-4 shrink-0 text-muted-foreground" />
+          <Input
+            autoFocus
+            value={messageSearch}
+            onChange={(event) => setMessageSearch(event.target.value)}
+            onKeyDown={(event) => {
+              if (event.key === "Escape") {
+                setMessageSearchOpen(false);
+                setMessageSearch("");
+              }
+            }}
+            placeholder="Pesquisar texto, pessoa ou arquivo nesta conversa"
+            aria-label="Pesquisar mensagens nesta conversa"
+            className="h-9 min-w-0 flex-1 border-0 bg-transparent shadow-none focus-visible:ring-1"
+          />
+          <span className="whitespace-nowrap text-xs text-muted-foreground">{filteredMessages.length} resultado(s)</span>
+          <Button type="button" variant="ghost" size="icon" className="h-8 w-8 shrink-0" aria-label="Fechar pesquisa" onClick={() => { setMessageSearchOpen(false); setMessageSearch(""); }}>×</Button>
+        </div>
+      )}
       <ScrollArea className="min-h-0 flex-1">
         <div className={cn("min-h-full bg-cover bg-center bg-fixed transition-colors", wallpaper === "custom" && customWallpaper ? "" : wallpaper === "mint" ? "bg-emerald-50 dark:bg-emerald-950/30" : wallpaper === "blue" ? "bg-sky-50 dark:bg-sky-950/30" : wallpaper === "rose" ? "bg-rose-50 dark:bg-rose-950/20" : wallpaper === "sand" ? "bg-amber-50 dark:bg-amber-950/20" : wallpaper === "lavender" ? "bg-violet-50 dark:bg-violet-950/30" : wallpaper === "slate" ? "bg-slate-100 dark:bg-slate-900" : wallpaper === "gradient-violet" ? "bg-gradient-to-br from-violet-100 via-fuchsia-50 to-sky-100 dark:from-violet-950/40 dark:via-background dark:to-sky-950/40" : wallpaper === "gradient-sunset" ? "bg-gradient-to-br from-orange-100 via-rose-50 to-violet-100 dark:from-orange-950/40 dark:via-rose-950/20 dark:to-violet-950/40" : "bg-gradient-to-b from-primary/[0.07] via-background to-primary/[0.025]")} style={wallpaper === "custom" && customWallpaper ? { backgroundImage: "linear-gradient(rgba(255,255,255,.78),rgba(255,255,255,.78)), url(" + customWallpaper + ")" } : undefined}>
         <div className="mx-auto max-w-3xl space-y-3 p-2.5 sm:space-y-5 sm:p-6">
@@ -755,7 +798,7 @@ function Conversation({
               </Button>
             </div>
           ) : (
-            messages.map((message) => (
+            filteredMessages.map((message) => (
               <MessageItem
                 key={message.id}
                 message={message}
@@ -778,6 +821,11 @@ function Conversation({
                 isGroup={conversation.chat_conversations?.kind === "group"}
               />
             ))
+          )}
+          {!messagesError && filteredMessages.length === 0 && (
+            <div className="rounded-xl border border-dashed border-border/70 bg-background/70 px-4 py-10 text-center text-sm text-muted-foreground">
+              {messageSearch.trim() ? "Nenhuma mensagem corresponde à pesquisa." : "Ainda não há mensagens nesta conversa."}
+            </div>
           )}
           <div ref={bottomRef} />
         </div>
