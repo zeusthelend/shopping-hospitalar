@@ -16,6 +16,8 @@ import {
   Mic,
   MoreVertical,
   Paperclip,
+  Palette,
+  Upload,
   Phone,
   PhoneOff,
   Pencil,
@@ -396,6 +398,35 @@ function Conversation({
   const [sending, setSending] = useState(false);
   const [recording, setRecording] = useState(false);
   const [groupProfileOpen, setGroupProfileOpen] = useState(false);
+  const [wallpaperOpen, setWallpaperOpen] = useState(false);
+  const [wallpaper, setWallpaper] = useState("gradient");
+  const [customWallpaper, setCustomWallpaper] = useState<string | null>(null);
+  const wallpaperInputRef = useRef<HTMLInputElement>(null);
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem("shopping-chat-wallpaper-" + id);
+      if (saved) {
+        const parsed = JSON.parse(saved) as { wallpaper?: string; customWallpaper?: string | null };
+        if (parsed.wallpaper) setWallpaper(parsed.wallpaper);
+        if (parsed.customWallpaper) setCustomWallpaper(parsed.customWallpaper);
+      }
+    } catch { /* Ignore invalid local preferences. */ }
+  }, [id]);
+  function chooseWallpaper(value: string, image: string | null = customWallpaper) {
+    setWallpaper(value);
+    setCustomWallpaper(image);
+    try { localStorage.setItem("shopping-chat-wallpaper-" + id, JSON.stringify({ wallpaper: value, customWallpaper: image })); }
+    catch { toast.error("Imagem muito grande para salvar neste dispositivo. Escolha uma imagem menor."); }
+  }
+  function loadCustomWallpaper(file: File | undefined) {
+    if (!file) return;
+    if (!file.type.startsWith("image/")) { toast.error("Escolha um arquivo de imagem."); return; }
+    if (file.size > 2 * 1024 * 1024) { toast.error("Escolha uma imagem de até 2 MB."); return; }
+    const reader = new FileReader();
+    reader.onload = () => { if (typeof reader.result === "string") chooseWallpaper("custom", reader.result); };
+    reader.onerror = () => toast.error("Não foi possível carregar essa imagem.");
+    reader.readAsDataURL(file);
+  }
   const recorderRef = useRef<MediaRecorder | null>(null);
   const recordingStreamRef = useRef<MediaStream | null>(null);
   const recordingChunksRef = useRef<Blob[]>([]);
@@ -691,15 +722,24 @@ function Conversation({
             </DialogContent>
           )}
         </Dialog>
-        <AudioCallControl
-          conversationId={id}
-          userId={me.id}
-          targets={participants
-            .filter((participant) => participant.user_id !== me.id && participant.profiles)
-            .map((participant) => participant.profiles!)}
-        />
+        <Dialog open={wallpaperOpen} onOpenChange={setWallpaperOpen}>
+          <DialogTrigger asChild>
+            <Button variant="ghost" size="icon" className="shrink-0 rounded-xl" aria-label="Personalizar fundo do chat" title="Personalizar fundo do chat"><Palette className="h-5 w-5" /></Button>
+          </DialogTrigger>
+          <DialogContent className="max-h-[85dvh] overflow-y-auto sm:max-w-md">
+            <DialogHeader><DialogTitle>Personalizar conversa</DialogTitle><DialogDescription>Escolha um fundo só para esta conversa neste dispositivo.</DialogDescription></DialogHeader>
+            <div className="grid grid-cols-2 gap-3">
+              {[{id:"gradient",label:"Degradê",cls:"bg-gradient-to-br from-primary/20 via-background to-emerald-100"},{id:"mint",label:"Verde suave",cls:"bg-emerald-100 dark:bg-emerald-950"},{id:"blue",label:"Azul suave",cls:"bg-sky-100 dark:bg-sky-950"},{id:"rose",label:"Rosa suave",cls:"bg-rose-100 dark:bg-rose-950"},{id:"sand",label:"Areia",cls:"bg-amber-100 dark:bg-amber-950"}].map((item) => <button key={item.id} type="button" onClick={() => chooseWallpaper(item.id)} className={cn("h-20 rounded-xl border-2 p-2 text-left text-sm font-medium transition-all", item.cls, wallpaper === item.id ? "border-primary ring-2 ring-primary/20" : "border-border/70 hover:border-primary/50")}>{item.label}{wallpaper === item.id ? " ✓" : ""}</button>)}
+              <button type="button" onClick={() => wallpaperInputRef.current?.click()} className={cn("flex h-20 items-center justify-center gap-2 rounded-xl border-2 border-dashed p-2 text-sm font-medium", wallpaper === "custom" ? "border-primary bg-primary/5" : "border-border hover:border-primary/50")}><Upload className="h-4 w-4" />Imagem própria</button>
+              <input ref={wallpaperInputRef} type="file" accept="image/*" className="hidden" onChange={(event) => loadCustomWallpaper(event.target.files?.[0])} />
+            </div>
+            {wallpaper === "custom" && customWallpaper && <div className="space-y-2"><img src={customWallpaper} alt="Prévia do fundo escolhido" className="h-28 w-full rounded-xl object-cover" /><Button variant="outline" className="w-full" onClick={() => chooseWallpaper("gradient", null)}>Remover imagem própria</Button></div>}
+            <p className="text-xs text-muted-foreground">Os fundos são salvos neste dispositivo e navegador. Imagens próprias de até 2 MB.</p>
+          </DialogContent>
+        </Dialog>
       </header>
-      <ScrollArea className="flex-1 bg-gradient-to-b from-primary/[0.025] via-background to-background">
+      <ScrollArea className="flex-1">
+        <div className={cn("min-h-full bg-cover bg-center bg-fixed transition-colors", wallpaper === "custom" && customWallpaper ? "" : wallpaper === "mint" ? "bg-emerald-50 dark:bg-emerald-950/30" : wallpaper === "blue" ? "bg-sky-50 dark:bg-sky-950/30" : wallpaper === "rose" ? "bg-rose-50 dark:bg-rose-950/20" : wallpaper === "sand" ? "bg-amber-50 dark:bg-amber-950/20" : "bg-gradient-to-b from-primary/[0.07] via-background to-primary/[0.025]")} style={wallpaper === "custom" && customWallpaper ? { backgroundImage: "linear-gradient(rgba(255,255,255,.78),rgba(255,255,255,.78)), url(" + customWallpaper + ")" } : undefined}>
         <div className="mx-auto max-w-3xl space-y-5 p-4 sm:p-6">
           {messagesError ? (
             <div className="rounded-lg border border-destructive/30 bg-destructive/5 p-4 text-sm">
@@ -739,6 +779,7 @@ function Conversation({
             ))
           )}
           <div ref={bottomRef} />
+        </div>
         </div>
       </ScrollArea>
       {(reply || editing) && (
@@ -854,7 +895,7 @@ function MessageItem({
   onChanged: () => void;
   favorite: boolean;
   userId: string;
-  readBy: Array<{ user_id: string; last_read_at: string }>;
+  readBy: Array<{ user_id: string; last_read_at: string; profiles: ProfileLite | null }>;
   isGroup: boolean;
 }) {
   const [profileOpen, setProfileOpen] = useState(false);
@@ -979,10 +1020,20 @@ function MessageItem({
                 return message.deleted_at ? (
                   <Check className="h-3 w-3" />
                 ) : readers > 0 ? (
-                  <span className="flex items-center gap-0.5 text-highlight">
-                    <CheckCheck className="h-3 w-3" />
-                    {isGroup ? `Lido por ${readers}` : "Lido"}
-                  </span>
+                  <Dialog>
+                    <DialogTrigger asChild>
+                      <button type="button" className="flex items-center gap-0.5 text-highlight underline-offset-2 hover:underline" aria-label="Ver quem leu esta mensagem">
+                        <CheckCheck className="h-3 w-3" />{isGroup ? `Lido por ${readers}` : "Lido"}
+                      </button>
+                    </DialogTrigger>
+                    <DialogContent className="sm:max-w-sm">
+                      <DialogHeader><DialogTitle>Informações da mensagem</DialogTitle><DialogDescription>{readers} {readers === 1 ? "pessoa visualizou" : "pessoas visualizaram"} esta mensagem.</DialogDescription></DialogHeader>
+                      <div className="space-y-2">
+                        {readBy.filter((participant) => new Date(participant.last_read_at).getTime() >= new Date(message.created_at).getTime()).map((participant) => <div key={participant.user_id} className="flex items-center gap-3 rounded-lg px-2 py-2"><Avatar className="h-9 w-9"><AvatarImage src={participant.profiles?.avatar_url ?? undefined} /><AvatarFallback>{initials(participant.profiles?.full_name ?? "Colaborador")}</AvatarFallback></Avatar><span className="min-w-0 flex-1 truncate text-sm font-medium">{participant.profiles?.full_name ?? "Colaborador"}</span><span className="text-xs text-muted-foreground">{participant.last_read_at ? new Date(participant.last_read_at).toLocaleTimeString("pt-BR", {hour:"2-digit",minute:"2-digit"}) : ""}</span><CheckCheck className="h-4 w-4 text-highlight" /></div>)}
+                        {readBy.filter((participant) => new Date(participant.last_read_at).getTime() < new Date(message.created_at).getTime()).map((participant) => <div key={participant.user_id} className="flex items-center gap-3 rounded-lg px-2 py-2 opacity-65"><Avatar className="h-9 w-9"><AvatarImage src={participant.profiles?.avatar_url ?? undefined} /><AvatarFallback>{initials(participant.profiles?.full_name ?? "Colaborador")}</AvatarFallback></Avatar><span className="min-w-0 flex-1 truncate text-sm">{participant.profiles?.full_name ?? "Colaborador"}</span><span className="text-xs text-muted-foreground">Não visualizou</span><Check className="h-4 w-4" /></div>)}
+                      </div>
+                    </DialogContent>
+                  </Dialog>
                 ) : (
                   <span className="flex items-center gap-0.5">
                     <Check className="h-3 w-3" />
