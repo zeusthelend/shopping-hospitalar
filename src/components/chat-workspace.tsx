@@ -1409,13 +1409,22 @@ function CallControl({
     if (!navigator.mediaDevices?.getUserMedia) {
       throw new Error("Este dispositivo não permite chamadas neste navegador.");
     }
+    const turnResponse = await fetch("/api/turn-credentials", { cache: "no-store" });
+    const turnData = (await turnResponse.json().catch(() => null)) as
+      | { iceServers?: RTCIceServer[]; error?: string }
+      | null;
+    if (!turnResponse.ok || !Array.isArray(turnData?.iceServers) || turnData.iceServers.length === 0) {
+      throw new Error(turnData?.error ?? "Não foi possível preparar os servidores de chamada. Tente novamente.");
+    }
+
     const stream = await navigator.mediaDevices.getUserMedia({
       audio: true,
       video: mediaType === "video" ? { facingMode: "user" } : false,
     });
     localStreamRef.current = stream;
     const peer = new RTCPeerConnection({
-      iceServers: [{ urls: "stun:stun.l.google.com:19302" }],
+      iceServers: turnData.iceServers,
+      iceTransportPolicy: "all",
     });
     peerRef.current = peer;
     stream.getTracks().forEach((track) => peer.addTrack(track, stream));
