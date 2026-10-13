@@ -1443,7 +1443,22 @@ function CallControl({
     peer.onconnectionstatechange = () => {
       if (peer.connectionState === "connected") setCallState("connected");
       if (peer.connectionState === "failed") {
-        toast.error("A chamada não conseguiu conectar. Verifique a rede e tente novamente.");
+        console.error("[Chat calls] Peer connection failed", {
+          connectionState: peer.connectionState,
+          iceConnectionState: peer.iceConnectionState,
+          iceGatheringState: peer.iceGatheringState,
+        });
+        toast.error("A chamada não conseguiu conectar. Verifique a conexão e a configuração do servidor TURN.");
+      }
+    };
+    peer.oniceconnectionstatechange = () => {
+      if (peer.iceConnectionState === "failed") {
+        console.error("[Chat calls] ICE negotiation failed", {
+          connectionState: peer.connectionState,
+          iceConnectionState: peer.iceConnectionState,
+          iceGatheringState: peer.iceGatheringState,
+        });
+        toast.error("Não foi possível estabelecer a conexão de áudio/vídeo. A rede pode exigir um servidor TURN.");
       }
     };
     return peer;
