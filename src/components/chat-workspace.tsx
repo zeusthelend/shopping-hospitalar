@@ -1705,18 +1705,19 @@ function CallControl({
               variant="outline"
               size="sm"
               onClick={() => {
-                if (remoteAudioRef.current) {
-                  void remoteAudioRef.current.play().then(
+                const mediaElement = callType === "video" ? remoteVideoRef.current : remoteAudioRef.current;
+                if (mediaElement) {
+                  void mediaElement.play().then(
                     () => setAudioPlaybackBlocked(false),
                     (error: unknown) => {
-                      console.error("Unable to play remote call audio", error);
-                      toast.error("Não foi possível ativar o áudio da chamada.");
+                      console.error("Unable to play remote call media", error);
+                      toast.error("Não foi possível ativar o áudio ou vídeo da chamada.");
                     },
                   );
                 }
               }}
             >
-              Ativar áudio
+              {callType === "video" ? "Ativar áudio e vídeo" : "Ativar áudio"}
             </Button>
           )}
           <Button
@@ -1780,14 +1781,15 @@ function CallControl({
             </DialogHeader>
             {audioPlaybackBlocked && (
               <Button className="mt-5" variant="outline" onClick={() => {
-                if (remoteAudioRef.current) {
-                  void remoteAudioRef.current.play().then(
+                const mediaElement = callType === "video" ? remoteVideoRef.current : remoteAudioRef.current;
+                if (mediaElement) {
+                  void mediaElement.play().then(
                     () => setAudioPlaybackBlocked(false),
-                    () => toast.error("Não foi possível ativar o áudio da chamada."),
+                    () => toast.error("Não foi possível ativar o áudio ou vídeo da chamada."),
                   );
                 }
               }}>
-                Ativar áudio
+                {callType === "video" ? "Ativar áudio e vídeo" : "Ativar áudio"}
               </Button>
             )}
             <Button
