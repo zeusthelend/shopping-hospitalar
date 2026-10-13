@@ -30,3 +30,13 @@ npm run dev
 Configure Firebase Cloud Messaging for the Android application (`br.com.shoppinghospitalar.portal`) and place its `google-services.json` in `android/app/` (this file is intentionally not committed or tracked). Then run `npm run android:sync` before building the APK. Without this Firebase configuration, Android push notifications cannot be delivered.
 
 Administrators and employees must register each device from **Notificações → Ativar no celular** and grant notification permission. DAV and chat alerts are sent through Firebase and can appear when the app is in the background or closed, including while the screen is locked. Web users must enable browser notifications on the published HTTPS site; background delivery depends on the browser supporting Firebase Web Push.
+
+
+## Configuração de chamadas de áudio e vídeo
+
+A chamada WebRTC usa a rota segura `/api/turn-credentials` para obter servidores ICE/TURN. Configure no ambiente do servidor de hospedagem (Vercel), sem o prefixo `VITE_`:
+
+- `METERED_DOMAIN`: domínio do app Metered, por exemplo `tiozeus.metered.live`.
+- `METERED_TURN_API_KEY`: chave da credencial TURN específica criada no Metered.
+
+Essas variáveis devem ficar somente no servidor; não coloque a chave TURN em variáveis públicas `VITE_*` nem no código-fonte. Depois de salvar as variáveis, faça um novo deploy. Para testar, use dois dispositivos em redes diferentes (por exemplo, computador no Wi-Fi e celular nos dados móveis).
