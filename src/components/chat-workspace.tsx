@@ -1358,6 +1358,34 @@ function Attachment({ message }: { message: MessageRow }) {
   );
 }
 
+/**
+ * ICE servers used to establish WebRTC connections.
+ * Configure a TURN service in deployment environment variables for reliable calls
+ * across restrictive NATs/mobile networks. Never commit TURN credentials.
+ */
+function getChatIceServers(): RTCIceServer[] {
+  const servers: RTCIceServer[] = [
+    { urls: "stun:stun.l.google.com:19302" },
+    { urls: "stun:stun1.l.google.com:19302" },
+    { urls: "stun:stun.cloudflare.com:3478" },
+  ];
+  const urls = (import.meta.env["VITE_TURN_URLS"] as string | undefined)
+    ?.split(",")
+    .map((url) => url.trim())
+    .filter(Boolean);
+  const username = import.meta.env["VITE_TURN_USERNAME"] as string | undefined;
+  const credential = import.meta.env["VITE_TURN_CREDENTIAL"] as string | undefined;
+
+  if (urls?.length && username && credential) {
+    servers.push({ urls, username, credential });
+  } else if (typeof window !== "undefined") {
+    console.warn(
+      "[Chat calls] TURN is not configured. Calls may fail between some mobile networks or restrictive NATs. Configure VITE_TURN_URLS, VITE_TURN_USERNAME and VITE_TURN_CREDENTIAL in the deployment environment.",
+    );
+  }
+  return servers;
+}
+
 type ChatCallRow = {
   id: string;
   conversation_id: string;
@@ -1415,7 +1443,8 @@ function CallControl({
     });
     localStreamRef.current = stream;
     const peer = new RTCPeerConnection({
-      iceServers: [{ urls: "stun:stun.l.google.com:19302" }],
+      iceServers: getChatIceServers(),
+      iceTransportPolicy: "all",
     });
     peerRef.current = peer;
     stream.getTracks().forEach((track) => peer.addTrack(track, stream));
@@ -1434,7 +1463,21 @@ function CallControl({
     peer.onconnectionstatechange = () => {
       if (peer.connectionState === "connected") setCallState("connected");
       if (peer.connectionState === "failed") {
-        toast.error("A chamada não conseguiu conectar. Verifique a rede e tente novamente.");
+        toast.error(
+          "A chamada não conseguiu conectar. Verifique a conexão e a configuração do servidor TURN.",
+        );
+      }
+    };
+    peer.oniceconnectionstatechange = () => {
+      if (peer.iceConnectionState === "failed") {
+        console.error("[Chat calls] ICE negotiation failed", {
+          connectionState: peer.connectionState,
+          iceConnectionState: peer.iceConnectionState,
+          iceGatheringState: peer.iceGatheringState,
+        });
+        toast.error(
+          "Não foi possível estabelecer a conexão de áudio/vídeo. A rede pode exigir um servidor TURN.",
+        );
       }
     };
     return peer;
