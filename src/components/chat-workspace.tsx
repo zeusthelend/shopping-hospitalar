@@ -653,36 +653,78 @@ function Conversation({
   }
   async function searchGifs() {
     const query = gifSearch.trim();
-    if (!query) return;
+    if (!query || gifSearching) return;
     setGifSearching(true);
+    setGifResults([]);
     try {
-      const endpoint = "https://api.giphy.com/v1/gifs/search?api_key=dc6zaTOxFJmzC&q="
-        + encodeURIComponent(query)
-        + "&limit=18&rating=pg&bundle=messaging_non_clips";
-      const response = await fetch(endpoint);
-      if (!response.ok) throw new Error("A busca de GIFs está indisponível no momento.");
-      const payload = await response.json() as {
-        data?: Array<{
-          id?: string;
-          title?: string;
-          images?: {
-            fixed_height?: { url?: string };
-            fixed_height_small_still?: { url?: string };
+      type GifResult = { id: string; title: string; url: string; preview: string };
+      let results: GifResult[] = [];
+
+      // Primeiro provedor: GIPHY. Se a chave pública de demonstração falhar,
+      // tentamos o endpoint de busca do Tenor para não deixar a galeria vazia.
+      try {
+        const endpoint = "https://api.giphy.com/v1/gifs/search?api_key=dc6zaTOxFJmzC&q="
+          + encodeURIComponent(query)
+          + "&limit=18&rating=pg&bundle=messaging_non_clips";
+        const response = await fetch(endpoint);
+        if (response.ok) {
+          const payload = await response.json() as {
+            data?: Array<{
+              id?: string;
+              title?: string;
+              images?: {
+                fixed_height?: { url?: string };
+                fixed_height_small?: { url?: string };
+                fixed_height_small_still?: { url?: string };
+              };
+            }>;
           };
-        }>;
-      };
-      const results = (payload.data ?? []).flatMap((item) => {
-        const url = item.images?.fixed_height?.url;
-        if (!url) return [];
-        return [{
-          id: item.id ?? url,
-          title: item.title || "GIF",
-          url,
-          preview: item.images?.fixed_height_small_still?.url ?? url,
-        }];
-      });
+          results = (payload.data ?? []).flatMap((item) => {
+            const url = item.images?.fixed_height?.url ?? item.images?.fixed_height_small?.url;
+            if (!url) return [];
+            return [{
+              id: item.id ?? url,
+              title: item.title || "GIF",
+              url,
+              preview: item.images?.fixed_height_small_still?.url ?? item.images?.fixed_height_small?.url ?? url,
+            }];
+          });
+        }
+      } catch {
+        // Continue to the fallback provider.
+      }
+
+      if (!results.length) {
+        const endpoint = "https://tenor.googleapis.com/v2/search?q="
+          + encodeURIComponent(query)
+          + "&key=LIVDSRZULELA&client_key=shopping_hospitalar_chat&limit=18&contentfilter=medium";
+        const response = await fetch(endpoint);
+        if (!response.ok) throw new Error("Os provedores de GIF não responderam. Tente novamente em instantes.");
+        const payload = await response.json() as {
+          results?: Array<{
+            id?: string;
+            title?: string;
+            media_formats?: {
+              gif?: { url?: string };
+              tinygif?: { url?: string };
+              mediumgif?: { url?: string };
+            };
+          }>;
+        };
+        results = (payload.results ?? []).flatMap((item) => {
+          const url = item.media_formats?.gif?.url ?? item.media_formats?.mediumgif?.url;
+          if (!url) return [];
+          return [{
+            id: item.id ?? url,
+            title: item.title || "GIF",
+            url,
+            preview: item.media_formats?.tinygif?.url ?? url,
+          }];
+        });
+      }
+
       setGifResults(results);
-      if (!results.length) toast("Nenhum GIF encontrado. Tente outra pesquisa.");
+      if (!results.length) toast("Nenhum GIF encontrado. Tente outra palavra.");
     } catch (error) {
       setGifResults([]);
       toast.error(error instanceof Error ? error.message : "Não foi possível pesquisar GIFs.");
