@@ -1358,6 +1358,57 @@ function Attachment({ message }: { message: MessageRow }) {
   );
 }
 
+/**
+ * Load ICE servers for WebRTC. Metered's credential-scoped API key is designed
+ * for client-side use; never expose the account-wide Metered Secret Key.
+ * The returned ICE server list includes TURN transports for restrictive networks.
+ */
+async function getChatIceServers(): Promise<RTCIceServer[]> {
+  const servers: RTCIceServer[] = [
+    { urls: "stun:stun.l.google.com:19302" },
+    { urls: "stun:stun1.l.google.com:19302" },
+    { urls: "stun:stun.cloudflare.com:3478" },
+  ];
+  const meteredDomain = (import.meta.env["VITE_METERED_DOMAIN"] as string | undefined)
+    ?.trim()
+    .replace(/^https?:\/\//, "")
+    .replace(/\/$/, "");
+  const meteredApiKey = (import.meta.env["VITE_METERED_TURN_API_KEY"] as string | undefined)?.trim();
+
+  if (meteredDomain && meteredApiKey) {
+    try {
+      const response = await fetch(
+        `https://${meteredDomain}/api/v1/turn/credentials?apiKey=${encodeURIComponent(meteredApiKey)}`,
+      );
+      if (!response.ok) throw new Error(`Metered TURN returned HTTP ${response.status}`);
+      const iceServers = (await response.json()) as RTCIceServer[];
+      if (!Array.isArray(iceServers) || iceServers.length === 0) {
+        throw new Error("Metered TURN returned an empty ICE server list");
+      }
+      return [...servers, ...iceServers];
+    } catch (error) {
+      console.error("[Chat calls] Could not load Metered TURN servers.", error);
+      toast.error("Não foi possível carregar o servidor TURN. Verifique a configuração do Metered.");
+    }
+  }
+
+  // Backward-compatible fallback for deployments that already configure TURN manually.
+  const urls = (import.meta.env["VITE_TURN_URLS"] as string | undefined)
+    ?.split(",")
+    .map((url) => url.trim())
+    .filter(Boolean);
+  const username = import.meta.env["VITE_TURN_USERNAME"] as string | undefined;
+  const credential = import.meta.env["VITE_TURN_CREDENTIAL"] as string | undefined;
+  if (urls?.length && username && credential) {
+    servers.push({ urls, username, credential });
+  } else {
+    console.warn(
+      "[Chat calls] Metered TURN is not configured. Set VITE_METERED_DOMAIN and VITE_METERED_TURN_API_KEY in the build environment.",
+    );
+  }
+  return servers;
+}
+
 type ChatCallRow = {
   id: string;
   conversation_id: string;
@@ -1415,7 +1466,8 @@ function CallControl({
     });
     localStreamRef.current = stream;
     const peer = new RTCPeerConnection({
-      iceServers: [{ urls: "stun:stun.l.google.com:19302" }],
+      iceServers: await getChatIceServers(),
+      iceTransportPolicy: "all",
     });
     peerRef.current = peer;
     stream.getTracks().forEach((track) => peer.addTrack(track, stream));
@@ -1434,7 +1486,21 @@ function CallControl({
     peer.onconnectionstatechange = () => {
       if (peer.connectionState === "connected") setCallState("connected");
       if (peer.connectionState === "failed") {
-        toast.error("A chamada não conseguiu conectar. Verifique a rede e tente novamente.");
+        toast.error(
+          "A chamada não conseguiu conectar. Verifique a conexão e a configuração do servidor TURN.",
+        );
+      }
+    };
+    peer.oniceconnectionstatechange = () => {
+      if (peer.iceConnectionState === "failed") {
+        console.error("[Chat calls] ICE negotiation failed", {
+          connectionState: peer.connectionState,
+          iceConnectionState: peer.iceConnectionState,
+          iceGatheringState: peer.iceGatheringState,
+        });
+        toast.error(
+          "Não foi possível estabelecer a conexão de áudio/vídeo. A rede pode exigir um servidor TURN.",
+        );
       }
     };
     return peer;
