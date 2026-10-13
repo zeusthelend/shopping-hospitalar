@@ -34,10 +34,11 @@ Administrators and employees must register each device from **Notificações →
 
 ## Chat audio and video calls
 
-WebRTC calls use STUN for initial connectivity and can use a TURN relay when the caller and recipient are behind restrictive NATs or mobile networks. For reliable production calling, configure these environment variables in the hosting environment (Lovable Cloud/Vercel) and rebuild/redeploy:
+WebRTC calls use STUN for initial connectivity and Metered TURN relays for restrictive NATs and mobile networks. Configure these build-time variables in the hosting environment (Lovable/Vercel), then rebuild/redeploy:
 
-- `VITE_TURN_URLS`: comma-separated TURN URLs, for example `turn:turn.example.com:3478,turns:turn.example.com:5349`.
-- `VITE_TURN_USERNAME`: TURN username issued by your TURN provider.
-- `VITE_TURN_CREDENTIAL`: TURN credential issued by your TURN provider.
+- `VITE_METERED_DOMAIN`: the Metered app domain from Developers, for example `yourappname.metered.live` (domain only or full HTTPS URL is accepted).
+- `VITE_METERED_TURN_API_KEY`: the API key from the specific TURN credential under **TURN Server & SFU → Credentials → Get credential → Show API Key**.
 
-Do not commit TURN credentials to the repository. Without a configured TURN relay, some networks will still be unable to connect peer-to-peer. The chat displays a connection diagnostic when ICE negotiation fails.
+The credential-scoped TURN API key is intended by Metered for client-side retrieval of ICE servers. Do not use the account-wide Metered Secret Key in frontend variables. The app fetches the complete ICE server array from Metered at call setup and retains the existing STUN fallback. Legacy `VITE_TURN_URLS`, `VITE_TURN_USERNAME`, and `VITE_TURN_CREDENTIAL` variables remain supported as a fallback.
+
+After configuring variables, rebuild/redeploy and test a call between two devices on different networks (for example, Wi-Fi and mobile data). TURN improves connectivity but cannot guarantee calls on every network. The chat displays diagnostics when ICE negotiation fails.
