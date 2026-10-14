@@ -14,8 +14,16 @@ export const Route = createFileRoute("/api/turn-credentials")({
         const apiKey = process.env.METERED_TURN_API_KEY?.trim();
 
         if (!domain || !apiKey) {
+          const missing = [
+            ...(!domain ? ["METERED_DOMAIN"] : []),
+            ...(!apiKey ? ["METERED_TURN_API_KEY"] : []),
+          ];
+          console.error("TURN configuration missing:", missing.join(", "));
           return Response.json(
-            { error: "A configuração do servidor TURN está incompleta." },
+            {
+              error: "A configuração do servidor TURN está incompleta.",
+              missing,
+            },
             { status: 503, headers: { "Cache-Control": "no-store" } },
           );
         }
