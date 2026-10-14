@@ -967,6 +967,10 @@ export type Database = {
         Args: { _platform: string; _token: string }
         Returns: undefined
       }
+      register_firebase_push_token_from_platform: {
+        Args: { _platform: string; _token: string }
+        Returns: undefined
+      }
       redeem_employee_reactivation_pin: {
         Args: { _pin: string }
         Returns: boolean
