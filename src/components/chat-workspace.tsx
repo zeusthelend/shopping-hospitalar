@@ -1570,9 +1570,24 @@ function CallControl({
           maxUsers: 2,
           layout: "Auto",
           showLayoutButton: false,
-          showLeaveRoomButton: false,
+          showPreJoinView: false,
+          showLeaveRoomConfirmDialog: false,
           onJoinRoom: () => {
+            if (!cancelled) setCallState("connecting");
+          },
+          onUserJoin: () => {
             if (!cancelled) setCallState("connected");
+          },
+          onLeaveRoom: () => {
+            if (cancelled || endingRef.current) return;
+            endingRef.current = true;
+            void supabase.rpc("respond_chat_call", { _action: "ended", _call: callId }).then(({ error }) => {
+              if (error) toast.error("Não foi possível encerrar a chamada.");
+              setCallId(null);
+              setCallState(null);
+              setCaller(null);
+              setIncoming(null);
+            });
           },
         });
       } catch (error) {
