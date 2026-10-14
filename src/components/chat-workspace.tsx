@@ -1504,7 +1504,7 @@ function CallControl({
       queryErrorShown.current = false;
       if (!active || !data) return;
       if (data.status === "accepted") {
-        setCallState("connecting");
+        setCallState((current) => current === "connected" ? current : "connecting");
       } else if (data.status === "ended" || data.status === "declined") {
         closePeer();
         setCallId(null);
