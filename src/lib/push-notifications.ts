@@ -161,14 +161,29 @@ export async function registerPushNotifications(userId: string): Promise<PushReg
   const query = new URLSearchParams(firebaseConfig).toString();
   let registration: ServiceWorkerRegistration;
   try {
-    registration = await navigator.serviceWorker.register(
+    await navigator.serviceWorker.register(
       `/firebase-messaging-sw.js?${query}`,
       { scope: "/", updateViaCache: "none" },
     );
-    // Wait until the worker is active before asking Firebase for the device token.
-    await navigator.serviceWorker.ready;
+    // On mobile, "ready" can remain pending if the worker fails to activate.
+    // Bound the wait so the user gets a useful error instead of an endless spinner.
+    registration = await new Promise<ServiceWorkerRegistration>((resolve, reject) => {
+      const timeout = window.setTimeout(() => {
+        reject(new Error("O serviço de notificações não ficou ativo em 15 segundos. Recarregue a página e tente novamente."));
+      }, 15_000);
+      navigator.serviceWorker.ready.then(
+        (readyRegistration) => {
+          window.clearTimeout(timeout);
+          resolve(readyRegistration);
+        },
+        (error: unknown) => {
+          window.clearTimeout(timeout);
+          reject(error);
+        },
+      );
+    });
     if (!registration.active) {
-      throw new Error("O service worker foi registrado, mas não ficou ativo.");
+      throw new Error("O serviço de notificações foi registrado, mas não ficou ativo.");
     }
   } catch (error) {
     console.error("Firebase messaging service worker registration failed", error);
