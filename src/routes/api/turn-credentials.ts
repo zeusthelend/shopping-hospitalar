@@ -11,13 +11,13 @@ export const Route = createFileRoute("/api/turn-credentials")({
     handlers: {
       GET: async () => {
         // Read secrets at request time so production uses the current Vercel environment.
-        const domain = process.env.METERED_DOMAIN?.trim();
-        const apiKey = process.env.METERED_TURN_API_KEY?.trim();
+        const domain = (process.env.METERED_DOMAIN ?? process.env.VITE_METERED_DOMAIN)?.trim();
+        const apiKey = (process.env.METERED_TURN_API_KEY ?? process.env.VITE_METERED_TURN_API_KEY)?.trim();
 
         if (!domain || !apiKey) {
           const missing = [
-            ...(!domain ? ["METERED_DOMAIN"] : []),
-            ...(!apiKey ? ["METERED_TURN_API_KEY"] : []),
+            ...(!domain ? ["METERED_DOMAIN (or VITE_METERED_DOMAIN)"] : []),
+            ...(!apiKey ? ["METERED_TURN_API_KEY (or VITE_METERED_TURN_API_KEY)"] : []),
           ];
           console.error("TURN configuration missing:", missing.join(", "));
           return Response.json(
