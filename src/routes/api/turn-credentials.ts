@@ -9,15 +9,61 @@ type IceServer = {
 export const Route = createFileRoute("/api/turn-credentials")({
   server: {
     handlers: {
-      GET: async () => {
-        // Read secrets at request time so production uses the current Vercel environment.
-        const domain = (process.env.METERED_DOMAIN ?? process.env.VITE_METERED_DOMAIN)?.trim();
-        const apiKey = (process.env.METERED_TURN_API_KEY ?? process.env.VITE_METERED_TURN_API_KEY)?.trim();
+      GET: async ({ request }) => {
+        const authorization = request.headers.get("Authorization");
+        const accessToken = authorization?.match(/^Bearer\s+(.+)$/i)?.[1];
+        if (!accessToken) {
+          return Response.json(
+            { error: "Entre no aplicativo para iniciar uma chamada." },
+            { status: 401, headers: { "Cache-Control": "no-store" } },
+          );
+        }
+
+        const supabaseUrl =
+          process.env.SUPABASE_URL?.trim() ||
+          process.env.VITE_SUPABASE_URL?.trim() ||
+          import.meta.env["VITE_SUPABASE_URL"]?.trim();
+        const supabaseApiKey =
+          process.env.SUPABASE_PUBLISHABLE_KEY?.trim() ||
+          process.env.VITE_SUPABASE_PUBLISHABLE_KEY?.trim() ||
+          process.env.SUPABASE_ANON_KEY?.trim() ||
+          process.env.VITE_SUPABASE_ANON_KEY?.trim() ||
+          import.meta.env["VITE_SUPABASE_PUBLISHABLE_KEY"]?.trim();
+        if (!supabaseUrl || !supabaseApiKey) {
+          return Response.json(
+            { error: "A configuração de autenticação do servidor está incompleta." },
+            { status: 503, headers: { "Cache-Control": "no-store" } },
+          );
+        }
+
+        try {
+          const authResponse = await fetch(supabaseUrl.replace(/\/+$/, "") + "/auth/v1/user", {
+            headers: { apikey: supabaseApiKey, Authorization: "Bearer " + accessToken },
+            cache: "no-store",
+            signal: AbortSignal.timeout(10_000),
+          });
+          if (!authResponse.ok) {
+            return Response.json(
+              { error: "Sua sessão expirou. Entre novamente para iniciar a chamada." },
+              { status: 401, headers: { "Cache-Control": "no-store" } },
+            );
+          }
+        } catch (error) {
+          console.error("Unable to validate TURN request session:", error);
+          return Response.json(
+            { error: "Não foi possível validar sua sessão para a chamada." },
+            { status: 502, headers: { "Cache-Control": "no-store" } },
+          );
+        }
+
+        // Read Metered secrets at request time so production uses the current Vercel environment.
+        const domain = process.env.METERED_DOMAIN?.trim();
+        const apiKey = process.env.METERED_TURN_API_KEY?.trim();
 
         if (!domain || !apiKey) {
           const missing = [
-            ...(!domain ? ["METERED_DOMAIN (or VITE_METERED_DOMAIN)"] : []),
-            ...(!apiKey ? ["METERED_TURN_API_KEY (or VITE_METERED_TURN_API_KEY)"] : []),
+            ...(!domain ? ["METERED_DOMAIN"] : []),
+            ...(!apiKey ? ["METERED_TURN_API_KEY"] : []),
           ];
           console.error("TURN configuration missing:", missing.join(", "));
           return Response.json(

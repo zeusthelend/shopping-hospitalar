@@ -963,6 +963,10 @@ export type Database = {
         Returns: string
       }
       redeem_access_pin: { Args: { _pin: string }; Returns: boolean }
+      register_firebase_push_token: {
+        Args: { _platform: string; _token: string }
+        Returns: undefined
+      }
       redeem_employee_reactivation_pin: {
         Args: { _pin: string }
         Returns: boolean

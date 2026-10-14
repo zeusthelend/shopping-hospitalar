@@ -39,6 +39,6 @@ A chamada WebRTC usa a rota segura `/api/turn-credentials` para obter servidores
 - `METERED_DOMAIN`: domínio do app Metered, por exemplo `tiozeus.metered.live`.
 - `METERED_TURN_API_KEY`: chave da credencial TURN específica criada no Metered.
 
-Os nomes com prefixo `VITE_` (`VITE_METERED_DOMAIN` e `VITE_METERED_TURN_API_KEY`) também são aceitos como compatibilidade. Para novas configurações, prefira os nomes sem `VITE_` no ambiente do servidor. Após alterar variáveis no Vercel, crie um novo deploy; as alterações não afetam deploys anteriores.
+A chave `METERED_TURN_API_KEY` deve ficar no ambiente do servidor e nunca em uma variável pública com prefixo `VITE_`. Depois de alterar as variáveis na Vercel, crie um novo deploy para que o servidor as receba.
 
-Essas variáveis devem ficar somente no servidor; não coloque a chave TURN em variáveis públicas `VITE_*` nem no código-fonte. Depois de salvar as variáveis, faça um novo deploy. Para testar, use dois dispositivos em redes diferentes (por exemplo, computador no Wi-Fi e celular nos dados móveis).
+Para confirmar a chamada entre redes diferentes, abra o aplicativo em dois dispositivos (por exemplo, computador no Wi-Fi e celular nos dados móveis).

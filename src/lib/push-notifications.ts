@@ -205,14 +205,24 @@ export async function registerPushNotifications(userId: string): Promise<PushReg
   }
   if (!token) throw new Error("O Firebase não retornou um token para este aparelho.");
 
-  const { error } = await supabase
-    .from("firebase_push_tokens")
-    .upsert({ user_id: userId, token, platform: "web" }, { onConflict: "token" });
+  await savePushToken(userId, token, "web");
+  return { status: "registered" };
+}
+
+async function savePushToken(userId: string, token: string, platform: "web" | "android") {
+  const { data, error: authError } = await supabase.auth.getUser();
+  if (authError) throw new Error("Não foi possível confirmar o usuário conectado: " + authError.message);
+  if (!data.user || data.user.id !== userId) {
+    throw new Error("A sessão do aplicativo não corresponde ao usuário deste aparelho. Entre novamente.");
+  }
+  const { error } = await supabase.rpc("register_firebase_push_token", {
+    _token: token,
+    _platform: platform,
+  });
   if (error) {
     console.error("Saving Firebase push token failed", error);
-    throw new Error(`O aparelho recebeu um token, mas o Supabase não conseguiu salvá-lo: ${error.message}`);
+    throw new Error("O aparelho recebeu um token, mas o Supabase não conseguiu salvá-lo: " + error.message);
   }
-  return { status: "registered" };
 }
 
 async function registerAndroidPush(
@@ -267,10 +277,7 @@ async function registerAndroidPush(
     );
     await PushNotifications.register();
     const token = await tokenPromise;
-    const { error } = await supabase
-      .from("firebase_push_tokens")
-      .upsert({ user_id: userId, token, platform: "android" }, { onConflict: "token" });
-    if (error) throw error;
+    await savePushToken(userId, token, "android");
     return { status: "registered" };
   } finally {
     if (timeout !== undefined) window.clearTimeout(timeout);
