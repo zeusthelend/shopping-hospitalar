@@ -10,6 +10,7 @@ export const Route = createFileRoute("/api/turn-credentials")({
   server: {
     handlers: {
       GET: async () => {
+        // Read secrets at request time so production uses the current Vercel environment.
         const domain = process.env.METERED_DOMAIN?.trim();
         const apiKey = process.env.METERED_TURN_API_KEY?.trim();
 
