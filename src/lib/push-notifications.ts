@@ -215,9 +215,9 @@ async function savePushToken(userId: string, token: string, platform: "web" | "a
   if (!data.user || data.user.id !== userId) {
     throw new Error("A sessão do aplicativo não corresponde ao usuário deste aparelho. Entre novamente.");
   }
-  const { error } = await supabase.rpc("register_firebase_push_token", {
-    _token: token,
+  const { error } = await supabase.rpc("register_firebase_push_token_from_platform", {
     _platform: platform,
+    _token: token,
   });
   if (error) {
     console.error("Saving Firebase push token failed", error);
