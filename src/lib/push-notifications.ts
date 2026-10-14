@@ -138,31 +138,65 @@ export async function registerPushNotifications(userId: string): Promise<PushReg
   if (!window.isSecureContext || !("serviceWorker" in navigator) || !("Notification" in window)) {
     return { status: "unsupported" };
   }
-  if (!(await isSupported())) return { status: "unsupported" };
+  let supported = false;
+  try {
+    supported = await isSupported();
+  } catch (error) {
+    console.error("Firebase Messaging support check failed", error);
+    throw new Error("O Chrome não conseguiu verificar o suporte a notificações. Feche e reabra a página e tente novamente.");
+  }
+  if (!supported) return { status: "unsupported" };
   if (window.top !== window.self) return { status: "open-in-new-tab" };
 
-  const permission =
-    Notification.permission === "granted" ? "granted" : await Notification.requestPermission();
+  let permission: NotificationPermission;
+  try {
+    permission =
+      Notification.permission === "granted" ? "granted" : await Notification.requestPermission();
+  } catch (error) {
+    console.error("Notification permission request failed", error);
+    throw new Error("O navegador bloqueou a solicitação de permissão. Verifique as permissões do site no Chrome.");
+  }
   if (permission !== "granted") return { status: "denied" };
 
   const query = new URLSearchParams(firebaseConfig).toString();
-  const registration = await navigator.serviceWorker.register(
-    `/firebase-messaging-sw.js?${query}`,
-    { scope: "/", updateViaCache: "none" },
-  );
-  // Wait until the worker is active before asking Firebase for the device token.
-  const readyRegistration = await navigator.serviceWorker.ready;
-  const app = getApps().length ? getApp() : initializeApp(firebaseConfig);
-  const token = await getToken(getMessaging(app), {
-    vapidKey,
-    serviceWorkerRegistration: readyRegistration || registration,
-  });
-  if (!token) return { status: "denied" };
+  let registration: ServiceWorkerRegistration;
+  try {
+    registration = await navigator.serviceWorker.register(
+      `/firebase-messaging-sw.js?${query}`,
+      { scope: "/", updateViaCache: "none" },
+    );
+    // Wait until the worker is active before asking Firebase for the device token.
+    await navigator.serviceWorker.ready;
+    if (!registration.active) {
+      throw new Error("O service worker foi registrado, mas não ficou ativo.");
+    }
+  } catch (error) {
+    console.error("Firebase messaging service worker registration failed", error);
+    const detail = error instanceof Error ? error.message : String(error);
+    throw new Error(`Falha ao iniciar o serviço de notificações do navegador: ${detail}`);
+  }
+
+  let token: string;
+  try {
+    const app = getApps().length ? getApp() : initializeApp(firebaseConfig);
+    token = await getToken(getMessaging(app), {
+      vapidKey,
+      serviceWorkerRegistration: registration,
+    });
+  } catch (error) {
+    console.error("Firebase push token request failed", error);
+    const detail = error instanceof Error ? error.message : String(error);
+    throw new Error(`O Firebase não conseguiu gerar o token deste aparelho: ${detail}`);
+  }
+  if (!token) throw new Error("O Firebase não retornou um token para este aparelho.");
 
   const { error } = await supabase
     .from("firebase_push_tokens")
     .upsert({ user_id: userId, token, platform: "web" }, { onConflict: "token" });
-  if (error) throw error;
+  if (error) {
+    console.error("Saving Firebase push token failed", error);
+    throw new Error(`O aparelho recebeu um token, mas o Supabase não conseguiu salvá-lo: ${error.message}`);
+  }
   return { status: "registered" };
 }
 
