@@ -62,6 +62,38 @@ import { cn } from "@/lib/utils";
 import { initials, livePresence } from "@/components/brand";
 import { notifyChatMessage } from "@/lib/push-notifications.functions";
 
+type ZegoCallInstance = {
+  joinRoom: (options: Record<string, unknown>) => void;
+  destroy: () => void;
+};
+type ZegoUIKitApi = {
+  generateKitTokenForProduction: (appId: number, token: string, roomId: string, userId: string, userName: string) => string;
+  create: (kitToken: string) => ZegoCallInstance;
+  OneONoneCall: unknown;
+  GroupCall: unknown;
+};
+let zegoSdkPromise: Promise<ZegoUIKitApi> | null = null;
+function loadZegoUIKit(): Promise<ZegoUIKitApi> {
+  const browserWindow = window as Window & { ZegoUIKitPrebuilt?: ZegoUIKitApi };
+  if (browserWindow.ZegoUIKitPrebuilt) return Promise.resolve(browserWindow.ZegoUIKitPrebuilt);
+  if (zegoSdkPromise) return zegoSdkPromise;
+  zegoSdkPromise = new Promise<ZegoUIKitApi>((resolve, reject) => {
+    const script = document.createElement("script");
+    script.src = "https://unpkg.com/@zegocloud/zego-uikit-prebuilt/zego-uikit-prebuilt.js";
+    script.async = true;
+    script.onload = () => {
+      if (browserWindow.ZegoUIKitPrebuilt) resolve(browserWindow.ZegoUIKitPrebuilt);
+      else reject(new Error("O SDK de chamadas ZEGOCLOUD não foi carregado."));
+    };
+    script.onerror = () => {
+      zegoSdkPromise = null;
+      reject(new Error("Não foi possível carregar o SDK de chamadas. Verifique a conexão."));
+    };
+    document.head.appendChild(script);
+  });
+  return zegoSdkPromise;
+}
+
 type ProfileLite = {
   id: string;
   full_name: string;
@@ -225,6 +257,7 @@ export function ChatWorkspace({ conversationId }: { conversationId?: string | un
           key={`incoming-${membership.conversation_id}`}
           conversationId={membership.conversation_id}
           userId={me.profile.id}
+          userName={me.profile.full_name}
           targets={allParticipants
             .filter((participant) => participant.conversation_id === membership.conversation_id && participant.user_id !== me.profile.id)
             .map((participant) => participant.profiles)
@@ -768,6 +801,7 @@ function Conversation({
         <CallControl
           conversationId={id}
           userId={me.id}
+          userName={me.full_name}
           targets={participants
             .filter((participant) => participant.user_id !== me.id)
             .map((participant) => participant.profiles)
@@ -1372,11 +1406,13 @@ type ChatCallRow = {
 function CallControl({
   conversationId,
   userId,
+  userName,
   targets,
   incomingOnly = false,
 }: {
   conversationId: string;
   userId: string;
+  userName: string;
   targets: ProfileLite[];
   incomingOnly?: boolean;
 }) {
@@ -1384,109 +1420,21 @@ function CallControl({
   const [callId, setCallId] = useState<string | null>(null);
   const [callState, setCallState] = useState<"ringing" | "connecting" | "connected" | null>(null);
   const [caller, setCaller] = useState<ProfileLite | null>(null);
-  const [audioPlaybackBlocked, setAudioPlaybackBlocked] = useState(false);
   const [callType, setCallType] = useState<"audio" | "video">("audio");
-  const peerRef = useRef<RTCPeerConnection | null>(null);
-  const localStreamRef = useRef<MediaStream | null>(null);
-  const remoteStreamRef = useRef<MediaStream | null>(null);
-  const remoteAudioRef = useRef<HTMLAudioElement>(null);
-  const remoteVideoRef = useRef<HTMLVideoElement>(null);
-  const localVideoRef = useRef<HTMLVideoElement>(null);
+  const zegoContainerRef = useRef<HTMLDivElement>(null);
+  const zegoInstanceRef = useRef<ZegoCallInstance | null>(null);
+  const endingRef = useRef(false);
   const queryErrorShown = useRef(false);
 
   function closePeer() {
-    peerRef.current?.close();
-    peerRef.current = null;
-    localStreamRef.current?.getTracks().forEach((track) => track.stop());
-    localStreamRef.current = null;
-    if (remoteAudioRef.current) remoteAudioRef.current.srcObject = null;
-    if (remoteVideoRef.current) remoteVideoRef.current.srcObject = null;
-    if (localVideoRef.current) localVideoRef.current.srcObject = null;
-    remoteStreamRef.current = null;
-  }
-
-  async function createPeer(mediaType: "audio" | "video"): Promise<RTCPeerConnection> {
-    if (!navigator.mediaDevices?.getUserMedia) {
-      throw new Error("Este dispositivo não permite chamadas neste navegador.");
+    endingRef.current = true;
+    try {
+      zegoInstanceRef.current?.destroy();
+    } catch (error) {
+      console.warn("[Chat calls] Unable to destroy ZEGOCLOUD call instance.", error);
     }
-    const { data: turnData, error: turnError } = await supabase.functions.invoke("turn-credentials", {
-      method: "POST",
-    });
-    if (turnError || !Array.isArray(turnData?.iceServers) || turnData.iceServers.length === 0) {
-      console.error("[Chat calls] TURN credentials unavailable", turnError);
-      const message =
-        typeof turnData?.error === "string"
-          ? turnData.error
-          : "Não foi possível preparar os servidores de chamada. Verifique a configuração TURN no Supabase.";
-      throw new Error(message);
-    }
-
-    const stream = await navigator.mediaDevices.getUserMedia({
-      audio: true,
-      video: mediaType === "video" ? { facingMode: "user" } : false,
-    });
-    localStreamRef.current = stream;
-    const peer = new RTCPeerConnection({
-      iceServers: turnData.iceServers,
-      iceTransportPolicy: "all",
-    });
-    peerRef.current = peer;
-    stream.getTracks().forEach((track) => peer.addTrack(track, stream));
-    peer.ontrack = (event) => {
-      const stream = event.streams[0];
-      if (!stream) return;
-      remoteStreamRef.current = stream;
-      if (mediaType === "video" && remoteVideoRef.current) {
-        remoteVideoRef.current.srcObject = stream;
-        void remoteVideoRef.current.play().catch(() => setAudioPlaybackBlocked(true));
-      } else if (remoteAudioRef.current) {
-        remoteAudioRef.current.srcObject = stream;
-        void remoteAudioRef.current.play().catch(() => setAudioPlaybackBlocked(true));
-      }
-    };
-    peer.onconnectionstatechange = () => {
-      if (peer.connectionState === "connected") setCallState("connected");
-      if (peer.connectionState === "failed") {
-        console.error("[Chat calls] Peer connection failed", {
-          connectionState: peer.connectionState,
-          iceConnectionState: peer.iceConnectionState,
-          iceGatheringState: peer.iceGatheringState,
-        });
-        toast.error("A chamada não conseguiu conectar. Verifique a conexão e a configuração do servidor TURN.");
-      }
-    };
-    peer.oniceconnectionstatechange = () => {
-      if (peer.iceConnectionState === "failed") {
-        console.error("[Chat calls] ICE negotiation failed", {
-          connectionState: peer.connectionState,
-          iceConnectionState: peer.iceConnectionState,
-          iceGatheringState: peer.iceGatheringState,
-        });
-        toast.error("Não foi possível estabelecer a conexão de áudio/vídeo. A rede pode exigir um servidor TURN.");
-      }
-    };
-    return peer;
-  }
-
-  async function gatherIce(peer: RTCPeerConnection) {
-    if (peer.iceGatheringState === "complete") return;
-    await new Promise<void>((resolve, reject) => {
-      const timeout = window.setTimeout(() => {
-        peer.removeEventListener("icegatheringstatechange", onStateChange);
-        // Do not block call signaling forever when a mobile network keeps ICE gathering open.
-        // Send the candidates gathered so far; the remote peer can then receive the incoming call.
-        console.warn("ICE gathering timed out; continuing with candidates gathered so far.");
-        resolve();
-      }, 25_000);
-      const onStateChange = () => {
-        if (peer.iceGatheringState !== "complete") return;
-        window.clearTimeout(timeout);
-        peer.removeEventListener("icegatheringstatechange", onStateChange);
-        resolve();
-      };
-      peer.addEventListener("icegatheringstatechange", onStateChange);
-      onStateChange();
-    });
+    zegoInstanceRef.current = null;
+    zegoContainerRef.current?.replaceChildren();
   }
 
   useEffect(() => {
@@ -1555,23 +1503,8 @@ function CallControl({
       }
       queryErrorShown.current = false;
       if (!active || !data) return;
-      if (
-        data.status === "accepted" &&
-        data.answer &&
-        peerRef.current?.remoteDescription === null
-      ) {
-        try {
-          await peerRef.current.setRemoteDescription({
-            type: "answer",
-            sdp: data.answer,
-          });
-          setCallState("connecting");
-        } catch (error) {
-          toast.error(
-            error instanceof Error ? error.message : "Não foi possível conectar a chamada.",
-          );
-          console.error("Unable to apply chat call answer", error);
-        }
+      if (data.status === "accepted") {
+        setCallState((current) => current === "connected" ? current : "connecting");
       } else if (data.status === "ended" || data.status === "declined") {
         closePeer();
         setCallId(null);
@@ -1600,14 +1533,82 @@ function CallControl({
 
   useEffect(() => {
     if (!callId) return;
-    if (callType === "video" && localVideoRef.current && localStreamRef.current) {
-      localVideoRef.current.srcObject = localStreamRef.current;
-    }
-    if (callType === "video" && remoteVideoRef.current && remoteStreamRef.current) {
-      remoteVideoRef.current.srcObject = remoteStreamRef.current;
-      void remoteVideoRef.current.play().catch(() => setAudioPlaybackBlocked(true));
-    }
-  }, [callId, callType]);
+    let cancelled = false;
+    const joinZegoRoom = async () => {
+      try {
+        const { data, error } = await supabase.functions.invoke("zego-token", {
+          body: { callId },
+        });
+        if (error) throw new Error(data?.error ?? "Não foi possível autenticar a chamada.");
+        if (!data?.token || !data?.roomId || !data?.userId || !data?.appId) {
+          throw new Error(data?.error ?? "O servidor não retornou as credenciais da chamada.");
+        }
+        const sdk = await loadZegoUIKit();
+        if (cancelled) return;
+        const container = zegoContainerRef.current;
+        if (!container) throw new Error("A janela da chamada não ficou pronta. Tente novamente.");
+        const kitToken = sdk.generateKitTokenForProduction(
+          Number(data.appId),
+          String(data.token),
+          String(data.roomId),
+          String(data.userId),
+          userName || "Colaborador",
+        );
+        const instance = sdk.create(kitToken);
+        zegoInstanceRef.current = instance;
+        instance.joinRoom({
+          container,
+          scenario: { mode: sdk.OneONoneCall },
+          turnOnMicrophoneWhenJoining: true,
+          turnOnCameraWhenJoining: callType === "video",
+          showMyCameraToggleButton: callType === "video",
+          showMyMicrophoneToggleButton: true,
+          showAudioVideoSettingsButton: true,
+          showScreenSharingButton: false,
+          showTextChat: false,
+          showUserList: false,
+          maxUsers: 2,
+          layout: "Auto",
+          showLayoutButton: false,
+          showPreJoinView: false,
+          showLeaveRoomConfirmDialog: false,
+          onJoinRoom: () => {
+            if (!cancelled) setCallState("connecting");
+          },
+          onUserJoin: () => {
+            if (!cancelled) setCallState("connected");
+          },
+          onLeaveRoom: () => {
+            if (cancelled || endingRef.current) return;
+            endingRef.current = true;
+            void supabase.rpc("respond_chat_call", { _action: "ended", _call: callId }).then(({ error }) => {
+              if (error) toast.error("Não foi possível encerrar a chamada.");
+              setCallId(null);
+              setCallState(null);
+              setCaller(null);
+              setIncoming(null);
+            });
+          },
+        });
+      } catch (error) {
+        if (!cancelled) {
+          console.error("[Chat calls] ZEGOCLOUD join failed", error);
+          toast.error(error instanceof Error ? error.message : "Não foi possível entrar na chamada.");
+          setCallState("connecting");
+        }
+      }
+    };
+    void joinZegoRoom();
+    return () => {
+      cancelled = true;
+      try {
+        zegoInstanceRef.current?.destroy();
+      } catch (error) {
+        console.warn("[Chat calls] ZEGOCLOUD cleanup failed.", error);
+      }
+      zegoInstanceRef.current = null;
+    };
+  }, [callId, callType, userName]);
 
   useEffect(
     () => () => {
@@ -1619,19 +1620,14 @@ function CallControl({
   async function startCall(target: ProfileLite, mediaType: "audio" | "video") {
     if (callId || !target) return;
     try {
+      endingRef.current = false;
       setCaller(target);
       setCallType(mediaType);
       setCallState("connecting");
-      const peer = await createPeer(mediaType);
-      const offer = await peer.createOffer();
-      await peer.setLocalDescription(offer);
-      await gatherIce(peer);
-      const sdp = peer.localDescription?.sdp;
-      if (!sdp) throw new Error("Não foi possível preparar a chamada.");
       const { data, error } = await supabase.rpc("start_chat_call", {
         _callee: target.id,
         _conversation: conversationId,
-        _offer: sdp,
+        _offer: mediaType === "video" ? "ZEGO_VIDEO" : "ZEGO_AUDIO",
       });
       if (error) throw error;
       if (!data) throw new Error("O servidor não confirmou o início da chamada.");
@@ -1648,20 +1644,14 @@ function CallControl({
   async function acceptCall() {
     if (!incoming) return;
     try {
-      const mediaType = incoming.offer.includes("m=video") ? "video" : "audio";
+      const mediaType = incoming.offer === "ZEGO_VIDEO" || incoming.offer.includes("m=video") ? "video" : "audio";
+      endingRef.current = false;
       setCallType(mediaType);
       setCaller(targets.find((target) => target.id === incoming.caller_id) ?? null);
       setCallState("connecting");
-      const peer = await createPeer(mediaType);
-      await peer.setRemoteDescription({ type: "offer", sdp: incoming.offer });
-      const answer = await peer.createAnswer();
-      await peer.setLocalDescription(answer);
-      await gatherIce(peer);
-      const sdp = peer.localDescription?.sdp;
-      if (!sdp) throw new Error("Não foi possível preparar a resposta da chamada.");
       const { error } = await supabase.rpc("respond_chat_call", {
         _action: "accepted",
-        _answer: sdp,
+        _answer: "ZEGO_ACCEPTED",
         _call: incoming.id,
       });
       if (error) throw error;
@@ -1708,7 +1698,7 @@ function CallControl({
   }
 
   const singleTarget = targets.length === 1 ? targets[0] : undefined;
-  const incomingIsVideo = incoming?.offer.includes("m=video") ?? false;
+  const incomingIsVideo = incoming?.offer === "ZEGO_VIDEO" || (incoming?.offer.includes("m=video") ?? false);
 
   return (
     <>
@@ -1721,27 +1711,6 @@ function CallControl({
                 ? "Chamando..."
                 : "Conectando..."}
           </span>
-          {audioPlaybackBlocked && (
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              onClick={() => {
-                const mediaElement = callType === "video" ? remoteVideoRef.current : remoteAudioRef.current;
-                if (mediaElement) {
-                  void mediaElement.play().then(
-                    () => setAudioPlaybackBlocked(false),
-                    (error: unknown) => {
-                      console.error("Unable to play remote call media", error);
-                      toast.error("Não foi possível ativar o áudio ou vídeo da chamada.");
-                    },
-                  );
-                }
-              }}
-            >
-              {callType === "video" ? "Ativar áudio e vídeo" : "Ativar áudio"}
-            </Button>
-          )}
           <Button
             type="button"
             variant="destructive"
@@ -1777,15 +1746,15 @@ function CallControl({
           </DropdownMenuContent>
         </DropdownMenu>
       ) : null}
-      <audio ref={remoteAudioRef} autoPlay playsInline className={callType === "video" ? "hidden" : "sr-only"} />
       <Dialog open={!!callId} onOpenChange={(open) => !open && void endCall()}>
         <DialogContent className={callType === "video" ? "max-h-[90dvh] overflow-y-auto sm:max-w-2xl" : "sm:max-w-sm"}>
-          {callType === "video" && (
-            <div className="relative overflow-hidden rounded-xl bg-black">
-              <video ref={remoteVideoRef} autoPlay playsInline className="aspect-video max-h-[55dvh] w-full object-contain" />
-              <video ref={localVideoRef} autoPlay muted playsInline className="absolute bottom-3 right-3 aspect-video w-28 rounded-lg border border-white/60 bg-black object-cover sm:w-40" />
-            </div>
-          )}
+          <div
+            ref={zegoContainerRef}
+            className={cn(
+              "w-full overflow-hidden rounded-xl bg-black",
+              callType === "video" ? "h-[min(58dvh,560px)] min-h-[300px]" : "h-[min(48dvh,420px)] min-h-[220px]",
+            )}
+          />
           <div className="flex flex-col items-center py-5 text-center">
             {callType !== "video" && <Avatar className="mb-5 h-28 w-28 ring-4 ring-primary/15">
               <AvatarImage src={caller?.avatar_url ?? undefined} alt={caller?.full_name ?? "Foto do contato"} />
@@ -1801,19 +1770,6 @@ function CallControl({
                     : "Conectando..."}
               </DialogDescription>
             </DialogHeader>
-            {audioPlaybackBlocked && (
-              <Button className="mt-5" variant="outline" onClick={() => {
-                const mediaElement = callType === "video" ? remoteVideoRef.current : remoteAudioRef.current;
-                if (mediaElement) {
-                  void mediaElement.play().then(
-                    () => setAudioPlaybackBlocked(false),
-                    () => toast.error("Não foi possível ativar o áudio ou vídeo da chamada."),
-                  );
-                }
-              }}>
-                {callType === "video" ? "Ativar áudio e vídeo" : "Ativar áudio"}
-              </Button>
-            )}
             <Button
               type="button"
               variant="destructive"
