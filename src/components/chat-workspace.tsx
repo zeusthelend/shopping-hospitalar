@@ -1539,7 +1539,21 @@ function CallControl({
         const { data, error } = await supabase.functions.invoke("zego-token", {
           body: { callId },
         });
-        if (error) throw new Error(data?.error ?? "Não foi possível autenticar a chamada.");
+        if (error) {
+          let detail = typeof data?.error === "string" ? data.error : "";
+          const context = error.context;
+          if (!detail && context instanceof Response) {
+            try {
+              const payload = await context.clone().json() as { error?: unknown; message?: unknown };
+              if (typeof payload.error === "string") detail = payload.error;
+              else if (typeof payload.message === "string") detail = payload.message;
+            } catch {
+              // Keep the safe fallback if the server did not return JSON.
+            }
+          }
+          const status = context instanceof Response ? ` (HTTP ${context.status})` : "";
+          throw new Error(detail || `Não foi possível autenticar a chamada${status}. Verifique a sessão e as credenciais do servidor.`);
+        }
         if (!data?.token || !data?.roomId || !data?.userId || !data?.appId) {
           throw new Error(data?.error ?? "O servidor não retornou as credenciais da chamada.");
         }
