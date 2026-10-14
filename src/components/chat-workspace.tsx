@@ -1409,12 +1409,16 @@ function CallControl({
     if (!navigator.mediaDevices?.getUserMedia) {
       throw new Error("Este dispositivo não permite chamadas neste navegador.");
     }
-    const turnResponse = await fetch("/api/turn-credentials", { cache: "no-store" });
-    const turnData = (await turnResponse.json().catch(() => null)) as
-      | { iceServers?: RTCIceServer[]; error?: string }
-      | null;
-    if (!turnResponse.ok || !Array.isArray(turnData?.iceServers) || turnData.iceServers.length === 0) {
-      throw new Error(turnData?.error ?? "Não foi possível preparar os servidores de chamada. Tente novamente.");
+    const { data: turnData, error: turnError } = await supabase.functions.invoke("turn-credentials", {
+      method: "POST",
+    });
+    if (turnError || !Array.isArray(turnData?.iceServers) || turnData.iceServers.length === 0) {
+      console.error("[Chat calls] TURN credentials unavailable", turnError);
+      const message =
+        typeof turnData?.error === "string"
+          ? turnData.error
+          : "Não foi possível preparar os servidores de chamada. Verifique a configuração TURN no Supabase.";
+      throw new Error(message);
     }
 
     const stream = await navigator.mediaDevices.getUserMedia({
