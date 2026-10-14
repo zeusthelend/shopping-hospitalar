@@ -135,7 +135,10 @@ export async function registerPushNotifications(userId: string): Promise<PushReg
   ) {
     return { status: "not-configured" };
   }
-  if (!("Notification" in window) || !(await isSupported())) return { status: "unsupported" };
+  if (!window.isSecureContext || !("serviceWorker" in navigator) || !("Notification" in window)) {
+    return { status: "unsupported" };
+  }
+  if (!(await isSupported())) return { status: "unsupported" };
   if (window.top !== window.self) return { status: "open-in-new-tab" };
 
   const permission =
@@ -143,11 +146,16 @@ export async function registerPushNotifications(userId: string): Promise<PushReg
   if (permission !== "granted") return { status: "denied" };
 
   const query = new URLSearchParams(firebaseConfig).toString();
-  const registration = await navigator.serviceWorker.register(`/firebase-messaging-sw.js?${query}`);
+  const registration = await navigator.serviceWorker.register(
+    `/firebase-messaging-sw.js?${query}`,
+    { scope: "/", updateViaCache: "none" },
+  );
+  // Wait until the worker is active before asking Firebase for the device token.
+  const readyRegistration = await navigator.serviceWorker.ready;
   const app = getApps().length ? getApp() : initializeApp(firebaseConfig);
   const token = await getToken(getMessaging(app), {
     vapidKey,
-    serviceWorkerRegistration: registration,
+    serviceWorkerRegistration: readyRegistration || registration,
   });
   if (!token) return { status: "denied" };
 
