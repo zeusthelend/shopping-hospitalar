@@ -1456,12 +1456,64 @@ function CallControl({
   const isCallerRef = useRef(false);
   const queryErrorShown = useRef(false);
   const connectionFailureShown = useRef(false);
+  const connectionTimeoutRef = useRef<number | null>(null);
+
+  function clearCallConnectionTimeout() {
+    if (connectionTimeoutRef.current !== null) {
+      window.clearTimeout(connectionTimeoutRef.current);
+      connectionTimeoutRef.current = null;
+    }
+  }
+
+  function failCallConnection(peer: RTCPeerConnection, reason: string) {
+    if (connectionFailureShown.current) return;
+    connectionFailureShown.current = true;
+    clearCallConnectionTimeout();
+    console.error("[Chat calls] ICE negotiation failed.", {
+      connectionState: peer.connectionState,
+      iceConnectionState: peer.iceConnectionState,
+      reason,
+    });
+    toast.error("A mídia da chamada não conectou (" + reason + "). Confira a internet e tente novamente.");
+    if (callIdRef.current) void endCall();
+  }
+
+  function refreshPeerConnectionState(peer: RTCPeerConnection) {
+    const iceState = peer.iceConnectionState;
+    if (peer.connectionState === "connected" || iceState === "connected" || iceState === "completed") {
+      clearCallConnectionTimeout();
+      setCallState("connected");
+      return;
+    }
+    if ((peer.connectionState === "failed" || iceState === "failed") && callIdRef.current) {
+      failCallConnection(peer, "ICE " + iceState);
+    }
+  }
+
+  function monitorPeerConnection(peer: RTCPeerConnection) {
+    refreshPeerConnectionState(peer);
+    if (connectionFailureShown.current || connectionTimeoutRef.current !== null) return;
+
+    connectionTimeoutRef.current = window.setTimeout(() => {
+      connectionTimeoutRef.current = null;
+      if (peerConnectionRef.current !== peer) return;
+      refreshPeerConnectionState(peer);
+      if (
+        connectionFailureShown.current ||
+        peer.connectionState === "connected" ||
+        peer.iceConnectionState === "connected" ||
+        peer.iceConnectionState === "completed"
+      ) return;
+      failCallConnection(peer, "sem conexão após 30 segundos; ICE " + peer.iceConnectionState);
+    }, 30_000);
+  }
 
   useEffect(() => {
     callIdRef.current = callId;
   }, [callId]);
 
   function closePeer() {
+    clearCallConnectionTimeout();
     callIdRef.current = null;
     remoteAnswerRef.current = null;
     const peer = peerConnectionRef.current;
@@ -1490,7 +1542,10 @@ function CallControl({
       video: mediaType === "video",
     });
     localStreamRef.current = stream;
-    const peer = new RTCPeerConnection({ iceServers: await loadCallIceServers() });
+    const peer = new RTCPeerConnection({
+      iceServers: await loadCallIceServers(),
+      iceTransportPolicy: mediaType === "video" ? "relay" : "all",
+    });
     peerConnectionRef.current = peer;
     stream.getTracks().forEach((track) => peer.addTrack(track, stream));
     peer.ontrack = (event) => {
@@ -1514,15 +1569,8 @@ function CallControl({
         });
       }
     };
-    peer.onconnectionstatechange = () => {
-      if (peer.connectionState === "connected") {
-        setCallState("connected");
-      } else if (peer.connectionState === "failed" && !connectionFailureShown.current) {
-        connectionFailureShown.current = true;
-        toast.error("A chamada não conseguiu conectar. Verifique a internet e as permissões de microfone.");
-        if (callIdRef.current) void endCall();
-      }
-    };
+    peer.onconnectionstatechange = () => refreshPeerConnectionState(peer);
+    peer.oniceconnectionstatechange = () => refreshPeerConnectionState(peer);
     return peer;
   }
 
@@ -1599,6 +1647,7 @@ function CallControl({
           remoteAnswerRef.current = data.answer;
           try {
             await peer.setRemoteDescription({ type: "answer", sdp: data.answer });
+            monitorPeerConnection(peer);
           } catch (error) {
             remoteAnswerRef.current = data.answer;
             console.error("[Chat calls] Não foi possível aplicar a resposta da chamada.", error);
@@ -1705,6 +1754,7 @@ function CallControl({
       setCallId(incoming.id);
       setCallState("connecting");
       setIncoming(null);
+      monitorPeerConnection(peer);
     } catch (error) {
       closePeer();
       setCaller(null);
