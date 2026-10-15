@@ -18,6 +18,10 @@ type WorkerNitroConfig = {
 
 const cloudflareRuntimeConfig: WorkerNitroConfig = {
   cloudflare: {
+    // Enable Node.js compatibility so server-side process.env can read Worker bindings.
+    nodeCompat: true,
+    // Include the generated Wrangler configuration in the Nitro output.
+    deployConfig: true,
     wrangler: {
       vars: {
         CLOUDFLARE_ACCOUNT_ID: "a693098997941e429f5fde5803935413",
