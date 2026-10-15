@@ -60,12 +60,19 @@ function getSupabaseConfig(): SupabaseConfig | null {
 }
 
 function getRealtimeKitConfig(): RealtimeKitConfig | null {
-  const accountId = process.env["CLOUDFLARE_ACCOUNT_ID"]?.trim();
-  const appId = process.env["CLOUDFLARE_REALTIMEKIT_APP_ID"]?.trim();
+  // The account and app IDs are non-secret deployment identifiers already declared
+  // in vite.config.ts. Keep fallbacks so the call endpoint can still resolve them
+  // if the runtime does not populate process.env for ordinary Worker vars.
+  const accountId =
+    process.env["CLOUDFLARE_ACCOUNT_ID"]?.trim() ||
+    "a693098997941e429f5fde5803935413";
+  const appId =
+    process.env["CLOUDFLARE_REALTIMEKIT_APP_ID"]?.trim() ||
+    "bf2a26c7-a083-4b2c-94fd-ed1c6ecc85a1";
+  // The API token is a secret and must always come from the deployed Worker secret.
   const apiToken = process.env["CLOUDFLARE_API_TOKEN"]?.trim();
 
-  if (!accountId || !appId || !apiToken) return null;
-  if (!/^[a-f\d]{32}$/i.test(accountId) || !UUID_PATTERN.test(appId)) return null;
+  if (!/^[a-f\d]{32}$/i.test(accountId) || !UUID_PATTERN.test(appId) || !apiToken) return null;
 
   return {
     accountId,
@@ -305,7 +312,7 @@ export const Route = createFileRoute("/api/realtimekit-session")({
         const realtimeKit = getRealtimeKitConfig();
         if (!realtimeKit) {
           return jsonError(
-            "Configure CLOUDFLARE_ACCOUNT_ID, CLOUDFLARE_REALTIMEKIT_APP_ID e CLOUDFLARE_API_TOKEN no Worker.",
+            "A configuração da chamada está incompleta: verifique o secret CLOUDFLARE_API_TOKEN no Worker de produção. Os identificadores da conta e do app têm valores de fallback do projeto.",
             503,
           );
         }
