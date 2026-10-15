@@ -39,6 +39,9 @@ export default function RealtimeKitCallMedia({ authToken, mediaType, onJoined, o
         const client = await initMeeting({
           authToken,
           defaults: { audio: true, video: mediaType === "video" },
+          // Let RealtimeKit use its managed STUN/TURN configuration.
+          // Prefer direct connectivity first; use TURN relay when needed.
+          overrides: { forceRelay: false },
         });
         if (!client) throw new Error("O SDK da chamada não foi inicializado.");
         if (!active) {
