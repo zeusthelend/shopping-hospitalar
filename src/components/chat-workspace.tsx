@@ -1,6 +1,6 @@
 import { Link, useNavigate } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { useEffect, useRef, useState } from "react";
+import { lazy, Suspense, useCallback, useEffect, useRef, useState } from "react";
 import {
   ArrowLeft,
   Film,
@@ -62,59 +62,7 @@ import { cn } from "@/lib/utils";
 import { initials, livePresence } from "@/components/brand";
 import { notifyChatMessage } from "@/lib/push-notifications.functions";
 
-type CallIceServer = RTCIceServer;
-type TurnCredentialsResponse = {
-  iceServers?: CallIceServer[];
-  error?: string;
-  missing?: string[];
-};
-
-async function loadCallIceServers(): Promise<CallIceServer[]> {
-  const { data, error } = await supabase.auth.getSession();
-  if (error) throw new Error("Não foi possível validar sua sessão para iniciar a chamada.");
-  const accessToken = data.session?.access_token;
-  if (!accessToken) throw new Error("Entre novamente no aplicativo para iniciar a chamada.");
-
-  const response = await fetch("/api/turn-credentials", {
-    headers: { Authorization: "Bearer " + accessToken },
-    cache: "no-store",
-  });
-  const payload = (await response.json().catch(() => ({}))) as TurnCredentialsResponse;
-  if (!response.ok) {
-    const missing = payload.missing?.length ? " Variáveis ausentes: " + payload.missing.join(", ") + "." : "";
-    throw new Error((payload.error || "Não foi possível preparar a conexão da chamada.") + missing);
-  }
-  if (!Array.isArray(payload.iceServers) || payload.iceServers.length === 0) {
-    throw new Error("O servidor não retornou credenciais válidas para conectar a chamada.");
-  }
-  const hasTurn = payload.iceServers.some((server) => {
-    const urls = Array.isArray(server.urls) ? server.urls : [server.urls];
-    return urls.some((url) => typeof url === "string" && /^(turn|turns):/i.test(url));
-  });
-  if (!hasTurn) throw new Error("O servidor não retornou um servidor TURN para conectar entre redes.");
-  return payload.iceServers;
-}
-
-function waitForIceGathering(peer: RTCPeerConnection): Promise<void> {
-  if (peer.iceGatheringState === "complete") return Promise.resolve();
-  return new Promise((resolve, reject) => {
-    let timeout: number | undefined;
-    const finish = (error?: Error) => {
-      if (timeout !== undefined) window.clearTimeout(timeout);
-      peer.removeEventListener("icegatheringstatechange", onStateChange);
-      if (error) reject(error);
-      else resolve();
-    };
-    const onStateChange = () => {
-      if (peer.iceGatheringState === "complete") finish();
-    };
-    peer.addEventListener("icegatheringstatechange", onStateChange);
-    timeout = window.setTimeout(
-      () => finish(new Error("A rede demorou para preparar a chamada. Tente novamente.")),
-      20_000,
-    );
-  });
-}
+const CallMediaSession = lazy(() => import("./realtimekit-call-media"));
 
 type ProfileLite = {
   id: string;
@@ -279,7 +227,6 @@ export function ChatWorkspace({ conversationId }: { conversationId?: string | un
           key={`incoming-${membership.conversation_id}`}
           conversationId={membership.conversation_id}
           userId={me.profile.id}
-          userName={me.profile.full_name}
           targets={allParticipants
             .filter((participant) => participant.conversation_id === membership.conversation_id && participant.user_id !== me.profile.id)
             .map((participant) => participant.profiles)
@@ -823,7 +770,6 @@ function Conversation({
         <CallControl
           conversationId={id}
           userId={me.id}
-          userName={me.full_name}
           targets={participants
             .filter((participant) => participant.user_id !== me.id)
             .map((participant) => participant.profiles)
@@ -1425,16 +1371,75 @@ type ChatCallRow = {
   created_at: string;
 };
 
+type CallMetadata = {
+  provider: "cloudflare-realtimekit";
+  meetingId: string;
+  mediaType: "audio" | "video";
+};
+
+type CallSessionResponse = {
+  meetingId?: string;
+  token?: string;
+  metadata?: string;
+  mediaType?: "audio" | "video";
+  error?: string;
+};
+
+function getCallMetadata(value: string | null | undefined): CallMetadata | null {
+  if (!value) return null;
+  try {
+    const metadata = JSON.parse(value) as Partial<CallMetadata>;
+    if (
+      metadata.provider === "cloudflare-realtimekit" &&
+      typeof metadata.meetingId === "string" &&
+      /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(metadata.meetingId) &&
+      (metadata.mediaType === "audio" || metadata.mediaType === "video")
+    ) {
+      return metadata as CallMetadata;
+    }
+  } catch {
+    // Legacy WebRTC calls may still contain an SDP offer.
+  }
+  return null;
+}
+
+function getCallMediaType(call: ChatCallRow | null | undefined): "audio" | "video" {
+  const metadata = getCallMetadata(call?.offer);
+  if (metadata) return metadata.mediaType;
+  return call?.offer.includes("m=video") ? "video" : "audio";
+}
+
+async function requestCallSession(body: Record<string, unknown>): Promise<CallSessionResponse> {
+  const { data, error } = await supabase.auth.getSession();
+  if (error) throw new Error("Não foi possível validar sua sessão para iniciar a chamada.");
+  const accessToken = data.session?.access_token;
+  if (!accessToken) throw new Error("Entre novamente no aplicativo para iniciar a chamada.");
+
+  const response = await fetch("/api/realtimekit-session", {
+    method: "POST",
+    headers: {
+      Authorization: "Bearer " + accessToken,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(body),
+    cache: "no-store",
+  });
+  const payload = (await response.json().catch(() => ({}))) as CallSessionResponse;
+  if (!response.ok) throw new Error(payload.error || "Não foi possível preparar a chamada.");
+  if (!payload.token || !payload.meetingId) {
+    throw new Error("O servidor não retornou um token válido para entrar na chamada.");
+  }
+  return payload;
+}
+
 function CallControl({
   conversationId,
   userId,
-  userName,
   targets,
   incomingOnly = false,
 }: {
   conversationId: string;
   userId: string;
-  userName: string;
   targets: ProfileLite[];
   incomingOnly?: boolean;
 }) {
@@ -1443,136 +1448,19 @@ function CallControl({
   const [callState, setCallState] = useState<"ringing" | "connecting" | "connected" | null>(null);
   const [caller, setCaller] = useState<ProfileLite | null>(null);
   const [callType, setCallType] = useState<"audio" | "video">("audio");
+  const [participantToken, setParticipantToken] = useState<string | null>(null);
   const [preparingCall, setPreparingCall] = useState(false);
-  const [playbackBlocked, setPlaybackBlocked] = useState(false);
-  const peerConnectionRef = useRef<RTCPeerConnection | null>(null);
-  const localStreamRef = useRef<MediaStream | null>(null);
-  const remoteStreamRef = useRef<MediaStream | null>(null);
-  const remoteAnswerRef = useRef<string | null>(null);
   const callIdRef = useRef<string | null>(null);
-  const localVideoRef = useRef<HTMLVideoElement>(null);
-  const remoteVideoRef = useRef<HTMLVideoElement>(null);
-  const remoteAudioRef = useRef<HTMLAudioElement>(null);
-  const isCallerRef = useRef(false);
   const queryErrorShown = useRef(false);
-  const connectionFailureShown = useRef(false);
-  const connectionTimeoutRef = useRef<number | null>(null);
-
-  function clearCallConnectionTimeout() {
-    if (connectionTimeoutRef.current !== null) {
-      window.clearTimeout(connectionTimeoutRef.current);
-      connectionTimeoutRef.current = null;
-    }
-  }
-
-  function failCallConnection(peer: RTCPeerConnection, reason: string) {
-    if (connectionFailureShown.current) return;
-    connectionFailureShown.current = true;
-    clearCallConnectionTimeout();
-    console.error("[Chat calls] ICE negotiation failed.", {
-      connectionState: peer.connectionState,
-      iceConnectionState: peer.iceConnectionState,
-      reason,
-    });
-    toast.error("A mídia da chamada não conectou (" + reason + "). Confira a internet e tente novamente.");
-    if (callIdRef.current) void endCall();
-  }
-
-  function refreshPeerConnectionState(peer: RTCPeerConnection) {
-    const iceState = peer.iceConnectionState;
-    if (peer.connectionState === "connected" || iceState === "connected" || iceState === "completed") {
-      clearCallConnectionTimeout();
-      setCallState("connected");
-      return;
-    }
-    if ((peer.connectionState === "failed" || iceState === "failed") && callIdRef.current) {
-      failCallConnection(peer, "ICE " + iceState);
-    }
-  }
-
-  function monitorPeerConnection(peer: RTCPeerConnection) {
-    refreshPeerConnectionState(peer);
-    if (connectionFailureShown.current || connectionTimeoutRef.current !== null) return;
-
-    connectionTimeoutRef.current = window.setTimeout(() => {
-      connectionTimeoutRef.current = null;
-      if (peerConnectionRef.current !== peer) return;
-      refreshPeerConnectionState(peer);
-      if (
-        connectionFailureShown.current ||
-        peer.connectionState === "connected" ||
-        peer.iceConnectionState === "connected" ||
-        peer.iceConnectionState === "completed"
-      ) return;
-      failCallConnection(peer, "sem conexão após 30 segundos; ICE " + peer.iceConnectionState);
-    }, 30_000);
-  }
 
   useEffect(() => {
     callIdRef.current = callId;
   }, [callId]);
 
-  function closePeer() {
-    clearCallConnectionTimeout();
+  const clearCallMedia = useCallback(() => {
     callIdRef.current = null;
-    remoteAnswerRef.current = null;
-    const peer = peerConnectionRef.current;
-    peerConnectionRef.current = null;
-    try {
-      peer?.close();
-    } catch (error) {
-      console.warn("[Chat calls] Não foi possível fechar a conexão.", error);
-    }
-    localStreamRef.current?.getTracks().forEach((track) => track.stop());
-    remoteStreamRef.current?.getTracks().forEach((track) => track.stop());
-    localStreamRef.current = null;
-    remoteStreamRef.current = null;
-    if (localVideoRef.current) localVideoRef.current.srcObject = null;
-    if (remoteVideoRef.current) remoteVideoRef.current.srcObject = null;
-    if (remoteAudioRef.current) remoteAudioRef.current.srcObject = null;
-    isCallerRef.current = false;
-  }
-
-  async function createLocalPeerConnection(mediaType: "audio" | "video") {
-    if (!navigator.mediaDevices?.getUserMedia) {
-      throw new Error("Este navegador não permite chamadas. Abra o aplicativo em uma conexão segura.");
-    }
-    const stream = await navigator.mediaDevices.getUserMedia({
-      audio: true,
-      video: mediaType === "video",
-    });
-    localStreamRef.current = stream;
-    const peer = new RTCPeerConnection({
-      iceServers: await loadCallIceServers(),
-      iceTransportPolicy: mediaType === "video" ? "relay" : "all",
-    });
-    peerConnectionRef.current = peer;
-    stream.getTracks().forEach((track) => peer.addTrack(track, stream));
-    peer.ontrack = (event) => {
-      const remoteStream = event.streams[0] ?? remoteStreamRef.current ?? new MediaStream();
-      if (!event.streams[0] && !remoteStream.getTracks().includes(event.track)) {
-        remoteStream.addTrack(event.track);
-      }
-      remoteStreamRef.current = remoteStream;
-      if (remoteVideoRef.current) {
-        remoteVideoRef.current.srcObject = remoteStream;
-        void remoteVideoRef.current.play().catch((error: unknown) => {
-          console.warn("[Chat calls] A reprodução do vídeo remoto precisa de interação.", error);
-          setPlaybackBlocked(true);
-        });
-      }
-      if (remoteAudioRef.current) {
-        remoteAudioRef.current.srcObject = remoteStream;
-        void remoteAudioRef.current.play().catch((error: unknown) => {
-          console.warn("[Chat calls] A reprodução do áudio remoto precisa de interação.", error);
-          setPlaybackBlocked(true);
-        });
-      }
-    };
-    peer.onconnectionstatechange = () => refreshPeerConnectionState(peer);
-    peer.oniceconnectionstatechange = () => refreshPeerConnectionState(peer);
-    return peer;
-  }
+    setParticipantToken(null);
+  }, []);
 
   useEffect(() => {
     if (callId || !incomingOnly) return;
@@ -1642,21 +1530,8 @@ function CallControl({
       if (!active || !data) return;
       if (data.status === "accepted") {
         setCallState((current) => (current === "connected" ? current : "connecting"));
-        const peer = peerConnectionRef.current;
-        if (isCallerRef.current && data.answer && peer && remoteAnswerRef.current !== data.answer) {
-          remoteAnswerRef.current = data.answer;
-          try {
-            await peer.setRemoteDescription({ type: "answer", sdp: data.answer });
-            monitorPeerConnection(peer);
-          } catch (error) {
-            remoteAnswerRef.current = data.answer;
-            console.error("[Chat calls] Não foi possível aplicar a resposta da chamada.", error);
-            toast.error("A outra pessoa atendeu, mas a mídia não conseguiu conectar. Tente ligar novamente.");
-            void endCall();
-          }
-        }
       } else if (data.status === "ended" || data.status === "declined") {
-        closePeer();
+        clearCallMedia();
         setCallId(null);
         setCallState(null);
         setCaller(null);
@@ -1681,43 +1556,32 @@ function CallControl({
     };
   }, [callId]);
 
-  useEffect(() => {
-    if (!callId) return;
-    const localStream = localStreamRef.current;
-    const remoteStream = remoteStreamRef.current;
-    if (localVideoRef.current && localStream) localVideoRef.current.srcObject = localStream;
-    if (remoteVideoRef.current && remoteStream) remoteVideoRef.current.srcObject = remoteStream;
-    if (remoteAudioRef.current && remoteStream) remoteAudioRef.current.srcObject = remoteStream;
-  }, [callId, callType]);
-
   async function startCall(target: ProfileLite, mediaType: "audio" | "video") {
     if (callIdRef.current || preparingCall || !target) return;
     setPreparingCall(true);
-    isCallerRef.current = true;
-    connectionFailureShown.current = false;
-    setPlaybackBlocked(false);
     setCaller(target);
     setCallType(mediaType);
-    setCallState("connecting");
     try {
-      const peer = await createLocalPeerConnection(mediaType);
-      const offer = await peer.createOffer();
-      await peer.setLocalDescription(offer);
-      await waitForIceGathering(peer);
-      const offerSdp = peer.localDescription?.sdp;
-      if (!offerSdp) throw new Error("O navegador não conseguiu preparar a oferta da chamada.");
+      const session = await requestCallSession({
+        action: "start",
+        conversationId,
+        calleeId: target.id,
+        mediaType,
+      });
+      if (!session.metadata) throw new Error("O servidor não preparou os dados da sala.");
       const { data, error } = await supabase.rpc("start_chat_call", {
         _callee: target.id,
         _conversation: conversationId,
-        _offer: offerSdp,
+        _offer: session.metadata,
       });
       if (error) throw error;
       if (!data) throw new Error("O servidor não confirmou o início da chamada.");
       callIdRef.current = data;
       setCallId(data);
+      setParticipantToken(session.token ?? null);
       setCallState("ringing");
     } catch (error) {
-      closePeer();
+      clearCallMedia();
       setCaller(null);
       setCallState(null);
       toast.error(error instanceof Error ? error.message : "Não foi possível iniciar a chamada.");
@@ -1729,51 +1593,37 @@ function CallControl({
   async function acceptCall() {
     if (!incoming || preparingCall) return;
     setPreparingCall(true);
-    isCallerRef.current = false;
-    connectionFailureShown.current = false;
-    setPlaybackBlocked(false);
     try {
-      const mediaType = incoming.offer.includes("m=video") ? "video" : "audio";
+      const metadata = getCallMetadata(incoming.offer);
+      if (!metadata) {
+        throw new Error("Esta chamada foi iniciada por uma versão antiga do aplicativo. Peça para ligarem novamente.");
+      }
+      const mediaType = metadata.mediaType;
       setCallType(mediaType);
       setCaller(targets.find((target) => target.id === incoming.caller_id) ?? null);
       setCallState("connecting");
-      const peer = await createLocalPeerConnection(mediaType);
-      await peer.setRemoteDescription({ type: "offer", sdp: incoming.offer });
-      const answer = await peer.createAnswer();
-      await peer.setLocalDescription(answer);
-      await waitForIceGathering(peer);
-      const answerSdp = peer.localDescription?.sdp;
-      if (!answerSdp) throw new Error("O navegador não conseguiu preparar a resposta da chamada.");
+      const session = await requestCallSession({ action: "join", callId: incoming.id });
+      if (session.mediaType !== mediaType || session.meetingId !== metadata.meetingId) {
+        throw new Error("A sala da chamada não corresponde ao convite recebido.");
+      }
       const { error } = await supabase.rpc("respond_chat_call", {
         _action: "accepted",
-        _answer: answerSdp,
+        _answer: "realtimekit:" + session.meetingId,
         _call: incoming.id,
       });
       if (error) throw error;
       callIdRef.current = incoming.id;
       setCallId(incoming.id);
+      setParticipantToken(session.token ?? null);
       setCallState("connecting");
       setIncoming(null);
-      monitorPeerConnection(peer);
     } catch (error) {
-      closePeer();
+      clearCallMedia();
       setCaller(null);
       setCallState(null);
       toast.error(error instanceof Error ? error.message : "Não foi possível atender a chamada.");
     } finally {
       setPreparingCall(false);
-    }
-  }
-
-  async function resumeRemotePlayback() {
-    const media = callType === "video" ? remoteVideoRef.current : remoteAudioRef.current;
-    if (!media) return;
-    try {
-      await media.play();
-      setPlaybackBlocked(false);
-    } catch (error) {
-      console.warn("[Chat calls] Reprodução manual indisponível.", error);
-      toast.error("Toque novamente para ativar o áudio da chamada.");
     }
   }
 
@@ -1804,7 +1654,7 @@ function CallControl({
         return;
       }
     }
-    closePeer();
+    clearCallMedia();
     setCallId(null);
     setCallState(null);
     setCaller(null);
@@ -1812,7 +1662,7 @@ function CallControl({
   }
 
   const singleTarget = targets.length === 1 ? targets[0] : undefined;
-  const incomingIsVideo = incoming?.offer.includes("m=video") ?? false;
+  const incomingIsVideo = getCallMediaType(incoming) === "video";
 
   useEffect(
     () => () => {
@@ -1820,7 +1670,7 @@ function CallControl({
       if (activeCallId) {
         void supabase.rpc("respond_chat_call", { _action: "ended", _call: activeCallId });
       }
-      closePeer();
+      callIdRef.current = null;
     },
     [],
   );
@@ -1876,24 +1726,31 @@ function CallControl({
         </>
       ) : null}
       <Dialog open={!!callId} onOpenChange={(open) => !open && void endCall()}>
-        <DialogContent className={callType === "video" ? "max-h-[90dvh] overflow-y-auto sm:max-w-2xl" : "sm:max-w-sm"}>
-          {callType === "video" ? (
-            <div className="relative h-[min(58dvh,560px)] min-h-[300px] w-full overflow-hidden rounded-xl bg-black">
-              <video ref={remoteVideoRef} autoPlay playsInline aria-label="Vídeo da outra pessoa" className="h-full w-full object-cover" />
-              <video ref={localVideoRef} autoPlay muted playsInline aria-label="Seu vídeo" className="absolute bottom-3 right-3 h-24 w-32 rounded-lg border border-white/40 bg-black object-cover shadow-lg sm:h-32 sm:w-40" />
-            </div>
-          ) : (
-            <audio ref={remoteAudioRef} autoPlay playsInline aria-label="Áudio da chamada" className="sr-only" />
-          )}
-          {playbackBlocked && (
-            <Button type="button" variant="outline" className="mx-auto" onClick={() => void resumeRemotePlayback()}>
-              Ativar áudio da chamada
-            </Button>
-          )}
-          <div className="flex flex-col items-center py-5 text-center">
-            {callType !== "video" && <Avatar className="mb-5 h-28 w-28 ring-4 ring-primary/15">
+        <DialogContent className={callType === "video" ? "max-h-[90dvh] overflow-y-auto sm:max-w-4xl" : "max-h-[90dvh] overflow-y-auto sm:max-w-2xl"}>
+          <div className={callType === "video" ? "h-[min(58dvh,600px)] min-h-[300px] w-full overflow-hidden rounded-xl bg-black" : "h-[min(46dvh,440px)] min-h-[280px] w-full overflow-hidden rounded-xl bg-black"}>
+            {participantToken && callState !== "ringing" && typeof window !== "undefined" ? (
+              <Suspense fallback={<div className="grid h-full place-items-center text-sm text-white">Conectando à sala...</div>}>
+                <CallMediaSession
+                  authToken={participantToken}
+                  mediaType={callType}
+                  onJoined={() => setCallState("connected")}
+                  onLeft={() => void endCall()}
+                  onError={(message) => {
+                    toast.error(message);
+                    void endCall();
+                  }}
+                />
+              </Suspense>
+            ) : (
+              <div className="grid h-full place-items-center px-6 text-center text-sm text-white">
+                {callState === "ringing" ? "Aguardando a outra pessoa atender..." : "Preparando áudio e vídeo..."}
+              </div>
+            )}
+          </div>
+          <div className="flex flex-col items-center py-4 text-center">
+            {callType !== "video" && <Avatar className="mb-4 h-20 w-20 ring-4 ring-primary/15">
               <AvatarImage src={caller?.avatar_url ?? undefined} alt={caller?.full_name ?? "Foto do contato"} />
-              <AvatarFallback className="text-3xl">{initials(caller?.full_name ?? "Contato")}</AvatarFallback>
+              <AvatarFallback className="text-2xl">{initials(caller?.full_name ?? "Contato")}</AvatarFallback>
             </Avatar>}
             <DialogHeader className="items-center">
               <DialogTitle className="text-xl">{caller?.full_name ?? (callType === "video" ? "Chamada de vídeo" : "Chamada de áudio")}</DialogTitle>
@@ -1909,7 +1766,7 @@ function CallControl({
               type="button"
               variant="destructive"
               size="lg"
-              className="mt-8 h-14 w-14 rounded-full"
+              className="mt-6 h-14 w-14 rounded-full"
               onClick={() => void endCall()}
               aria-label="Encerrar chamada"
               title="Encerrar chamada"
@@ -1967,7 +1824,6 @@ function CallControl({
     </>
   );
 }
-
 function NewConversationDialog({
   profiles,
   userId,

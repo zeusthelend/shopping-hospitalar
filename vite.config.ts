@@ -6,7 +6,29 @@
 // You can pass additional config via defineConfig({ vite: { ... }, etc... }) if needed.
 import { defineConfig } from "@lovable.dev/vite-tanstack-config";
 
+type WorkerNitroConfig = {
+  preset?: string;
+  output?: { dir?: string; publicDir?: string; serverDir?: string };
+  cloudflare?: {
+    nodeCompat?: boolean;
+    deployConfig?: boolean;
+    wrangler: { vars: Record<string, string> };
+  };
+};
+
+const cloudflareRuntimeConfig: WorkerNitroConfig = {
+  cloudflare: {
+    wrangler: {
+      vars: {
+        CLOUDFLARE_ACCOUNT_ID: "a693098997941e429f5fde5803935413",
+        CLOUDFLARE_REALTIMEKIT_APP_ID: "bf2a26c7-a083-4b2c-94fd-ed1c6ecc85a1",
+      },
+    },
+  },
+};
+
 export default defineConfig({
+  nitro: cloudflareRuntimeConfig,
   tanstackStart: {
     // Redirect TanStack Start's bundled server entry to src/server.ts (our SSR error wrapper).
     // nitro/vite builds from this

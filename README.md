@@ -34,11 +34,14 @@ Administrators and employees must register each device from **Notificações →
 
 ## Configuração de chamadas de áudio e vídeo
 
-A chamada WebRTC usa a rota segura `/api/turn-credentials` para obter servidores ICE/TURN. Configure no ambiente do servidor de hospedagem (Vercel):
+A chamada usa o Cloudflare RealtimeKit. No ambiente do Worker `shopping-hospitalar`, configure os seguintes valores como variáveis e secrets do servidor:
 
-- `METERED_DOMAIN`: domínio do app Metered, por exemplo `tiozeus.metered.live`.
-- `METERED_TURN_API_KEY`: chave da credencial TURN específica criada no Metered.
+- `CLOUDFLARE_ACCOUNT_ID`: identificador da conta Cloudflare.
+- `CLOUDFLARE_REALTIMEKIT_APP_ID`: ID do app RealtimeKit.
+- `CLOUDFLARE_API_TOKEN`: token Cloudflare com permissão Realtime; mantenha-o como secret do Worker e nunca use o prefixo `VITE_`.
+- `CLOUDFLARE_REALTIMEKIT_HOST_PRESET` (opcional): preset de quem inicia a chamada. O padrão é `group_call_host`.
+- `CLOUDFLARE_REALTIMEKIT_PARTICIPANT_PRESET` (opcional): preset de quem atende. O padrão é `group_call_participant`.
 
-A chave `METERED_TURN_API_KEY` deve ficar no ambiente do servidor e nunca em uma variável pública com prefixo `VITE_`. Depois de alterar as variáveis na Vercel, crie um novo deploy para que o servidor as receba.
+O app precisa ter os presets `group_call_host` e `group_call_participant`, ou os nomes configurados acima. O servidor valida a sessão Supabase e a participação na conversa antes de criar uma sala ou emitir um token de participante. O token RealtimeKit nunca é persistido no banco.
 
-Para confirmar a chamada entre redes diferentes, abra o aplicativo em dois dispositivos (por exemplo, computador no Wi-Fi e celular nos dados móveis).
+O fluxo mantém o toque e as permissões de chamadas do chat e inicia a mídia somente depois que a chamada é atendida.
