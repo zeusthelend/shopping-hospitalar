@@ -62,7 +62,7 @@ import { cn } from "@/lib/utils";
 import { initials, livePresence } from "@/components/brand";
 import { notifyChatMessage } from "@/lib/push-notifications.functions";
 
-const CallMediaSession = lazy(() => import("./realtimekit-call-media"));
+const CallMediaSession = lazy(() => import("./livekit-call-media"));
 
 type ProfileLite = {
   id: string;
@@ -1372,13 +1372,15 @@ type ChatCallRow = {
 };
 
 type CallMetadata = {
-  provider: "cloudflare-realtimekit";
-  meetingId: string;
+  provider: "livekit";
+  roomName: string;
   mediaType: "audio" | "video";
 };
 
 type CallSessionResponse = {
   meetingId?: string;
+  roomName?: string;
+  serverUrl?: string;
   token?: string;
   metadata?: string;
   mediaType?: "audio" | "video";
@@ -1390,9 +1392,9 @@ function getCallMetadata(value: string | null | undefined): CallMetadata | null 
   try {
     const metadata = JSON.parse(value) as Partial<CallMetadata>;
     if (
-      metadata.provider === "cloudflare-realtimekit" &&
-      typeof metadata.meetingId === "string" &&
-      /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(metadata.meetingId) &&
+      metadata.provider === "livekit" &&
+      typeof metadata.roomName === "string" &&
+      /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(metadata.roomName) &&
       (metadata.mediaType === "audio" || metadata.mediaType === "video")
     ) {
       return metadata as CallMetadata;
@@ -1426,8 +1428,8 @@ async function requestCallSession(body: Record<string, unknown>): Promise<CallSe
   });
   const payload = (await response.json().catch(() => ({}))) as CallSessionResponse;
   if (!response.ok) throw new Error(payload.error || "Não foi possível preparar a chamada.");
-  if (!payload.token || !payload.meetingId) {
-    throw new Error("O servidor não retornou um token válido para entrar na chamada.");
+  if (!payload.token || !payload.meetingId || !payload.serverUrl) {
+    throw new Error("O servidor não retornou URL e token válidos para entrar na chamada.");
   }
   return payload;
 }
@@ -1449,6 +1451,7 @@ function CallControl({
   const [caller, setCaller] = useState<ProfileLite | null>(null);
   const [callType, setCallType] = useState<"audio" | "video">("audio");
   const [participantToken, setParticipantToken] = useState<string | null>(null);
+  const [liveKitServerUrl, setLiveKitServerUrl] = useState<string | null>(null);
   const [preparingCall, setPreparingCall] = useState(false);
   const callIdRef = useRef<string | null>(null);
   const queryErrorShown = useRef(false);
@@ -1460,6 +1463,7 @@ function CallControl({
   const clearCallMedia = useCallback(() => {
     callIdRef.current = null;
     setParticipantToken(null);
+    setLiveKitServerUrl(null);
   }, []);
 
   useEffect(() => {
@@ -1579,6 +1583,7 @@ function CallControl({
       callIdRef.current = data;
       setCallId(data);
       setParticipantToken(session.token ?? null);
+      setLiveKitServerUrl(session.serverUrl ?? null);
       setCallState("ringing");
     } catch (error) {
       clearCallMedia();
@@ -1603,18 +1608,19 @@ function CallControl({
       setCaller(targets.find((target) => target.id === incoming.caller_id) ?? null);
       setCallState("connecting");
       const session = await requestCallSession({ action: "join", callId: incoming.id });
-      if (session.mediaType !== mediaType || session.meetingId !== metadata.meetingId) {
+      if (session.mediaType !== mediaType || session.meetingId !== metadata.roomName || !session.serverUrl) {
         throw new Error("A sala da chamada não corresponde ao convite recebido.");
       }
       const { error } = await supabase.rpc("respond_chat_call", {
         _action: "accepted",
-        _answer: "realtimekit:" + session.meetingId,
+        _answer: "livekit:" + session.meetingId,
         _call: incoming.id,
       });
       if (error) throw error;
       callIdRef.current = incoming.id;
       setCallId(incoming.id);
       setParticipantToken(session.token ?? null);
+      setLiveKitServerUrl(session.serverUrl ?? null);
       setCallState("connecting");
       setIncoming(null);
     } catch (error) {
@@ -1728,10 +1734,11 @@ function CallControl({
       <Dialog open={!!callId} onOpenChange={(open) => !open && void endCall()}>
         <DialogContent className={callType === "video" ? "max-h-[90dvh] overflow-y-auto sm:max-w-4xl" : "max-h-[90dvh] overflow-y-auto sm:max-w-2xl"}>
           <div className={callType === "video" ? "h-[min(58dvh,600px)] min-h-[300px] w-full overflow-hidden rounded-xl bg-black" : "h-[min(46dvh,440px)] min-h-[280px] w-full overflow-hidden rounded-xl bg-black"}>
-            {participantToken && callState !== "ringing" && typeof window !== "undefined" ? (
+            {participantToken && liveKitServerUrl && callState !== "ringing" && typeof window !== "undefined" ? (
               <Suspense fallback={<div className="grid h-full place-items-center text-sm text-white">Conectando à sala...</div>}>
                 <CallMediaSession
                   authToken={participantToken}
+                  serverUrl={liveKitServerUrl}
                   mediaType={callType}
                   onJoined={() => setCallState("connected")}
                   onLeft={() => void endCall()}
