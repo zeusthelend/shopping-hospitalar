@@ -14,6 +14,15 @@ export default function LiveKitCallMedia({ authToken, mediaType, serverUrl, onJo
   const remoteRef = useRef<HTMLDivElement>(null);
   const localRef = useRef<HTMLVideoElement>(null);
   const [connected, setConnected] = useState(false);
+  const onJoinedRef = useRef(onJoined);
+  const onLeftRef = useRef(onLeft);
+  const onErrorRef = useRef(onError);
+
+  useEffect(() => {
+    onJoinedRef.current = onJoined;
+    onLeftRef.current = onLeft;
+    onErrorRef.current = onError;
+  }, [onJoined, onLeft, onError]);
 
   useEffect(() => {
     let active = true;
@@ -41,7 +50,7 @@ export default function LiveKitCallMedia({ authToken, mediaType, serverUrl, onJo
     room.on(RoomEvent.Disconnected, () => {
       if (!active) return;
       setConnected(false);
-      if (leftByUser) onLeft();
+      if (leftByUser) onLeftRef.current();
     });
 
     const connect = async () => {
@@ -61,9 +70,9 @@ export default function LiveKitCallMedia({ authToken, mediaType, serverUrl, onJo
         }
         if (!active) { await room.disconnect(); return; }
         setConnected(true);
-        onJoined();
+        onJoinedRef.current();
       } catch (error) {
-        if (active) onError(error instanceof Error ? error.message : "Não foi possível conectar ao LiveKit. Verifique o microfone, a câmera e a URL do servidor.");
+        if (active) onErrorRef.current(error instanceof Error ? error.message : "Não foi possível conectar ao LiveKit. Verifique o microfone, a câmera e a URL do servidor.");
       }
     };
     void connect();
@@ -76,7 +85,7 @@ export default function LiveKitCallMedia({ authToken, mediaType, serverUrl, onJo
       remoteRef.current?.replaceChildren();
       if (localRef.current) localRef.current.srcObject = null;
     };
-  }, [authToken, mediaType, serverUrl, onJoined, onLeft, onError]);
+  }, [authToken, mediaType, serverUrl]);
 
   return (
     <div className="relative flex h-full w-full flex-col gap-2 bg-black p-2">
