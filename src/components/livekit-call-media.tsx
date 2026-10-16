@@ -26,7 +26,7 @@ export default function LiveKitCallMedia({ authToken, mediaType, serverUrl, onJo
 
   useEffect(() => {
     let active = true;
-    let leftByUser = false;
+    let hasJoined = false;
     const room = new Room({ adaptiveStream: true, dynacast: true });
 
     const attachTrack = (track: RemoteTrack, _publication: RemoteTrackPublication, participant: Participant) => {
@@ -50,7 +50,7 @@ export default function LiveKitCallMedia({ authToken, mediaType, serverUrl, onJo
     room.on(RoomEvent.Disconnected, () => {
       if (!active) return;
       setConnected(false);
-      if (leftByUser) onLeftRef.current();
+      if (hasJoined) onLeftRef.current();
     });
 
     const connect = async () => {
@@ -69,6 +69,7 @@ export default function LiveKitCallMedia({ authToken, mediaType, serverUrl, onJo
           }
         }
         if (!active) { await room.disconnect(); return; }
+        hasJoined = true;
         setConnected(true);
         onJoinedRef.current();
       } catch (error) {
@@ -79,7 +80,6 @@ export default function LiveKitCallMedia({ authToken, mediaType, serverUrl, onJo
 
     return () => {
       active = false;
-      leftByUser = true;
       room.removeAllListeners();
       room.disconnect().catch((error) => console.warn("Não foi possível desconectar da sala LiveKit", error));
       remoteRef.current?.replaceChildren();
