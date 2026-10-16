@@ -1417,7 +1417,7 @@ async function requestCallSession(body: Record<string, unknown>): Promise<CallSe
   const accessToken = data.session?.access_token;
   if (!accessToken) throw new Error("Entre novamente no aplicativo para iniciar a chamada.");
 
-  const response = await fetch("/api/realtimekit-session", {
+  const response = await fetch("/api/livekit-session", {
     method: "POST",
     headers: {
       Authorization: "Bearer " + accessToken,
