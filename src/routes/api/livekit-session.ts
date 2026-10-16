@@ -5,7 +5,7 @@ type SupabaseConfig = { url: string; apiKey: string };
 type AuthenticatedUser = { id: string };
 type CallRow = {
   id: string; conversation_id: string; caller_id: string; callee_id: string;
-  status: string; offer: string; created_at: string;
+  status: string; offer: unknown; created_at: string;
 };
 type LiveKitMetadata = { provider: "livekit"; roomName: string; mediaType: MediaType };
 
@@ -72,9 +72,12 @@ async function makeToken(config: { apiKey: string; apiSecret: string }, identity
   const signature = await crypto.subtle.sign("HMAC", key, new TextEncoder().encode(unsigned));
   return unsigned + "." + b64url(new Uint8Array(signature));
 }
-function parseMetadata(value: string): LiveKitMetadata | null {
+function parseMetadata(value: unknown): LiveKitMetadata | null {
   try {
-    const m = JSON.parse(value) as Partial<LiveKitMetadata>;
+    // Supabase columns may be returned as JSON objects (json/jsonb) or strings (text).
+    const parsed: unknown = typeof value === "string" ? JSON.parse(value) : value;
+    if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) return null;
+    const m = parsed as Partial<LiveKitMetadata>;
     if (m.provider === "livekit" && typeof m.roomName === "string" && /^[a-f0-9-]{36}$/i.test(m.roomName) && (m.mediaType === "audio" || m.mediaType === "video")) return m as LiveKitMetadata;
   } catch { /* Invalid or legacy call metadata. */ }
   return null;
