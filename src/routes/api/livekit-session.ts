@@ -21,7 +21,7 @@ function getLiveKitConfig() {
   const url = process.env["LIVEKIT_URL"]?.trim();
   const apiKey = process.env["LIVEKIT_API_KEY"]?.trim();
   const apiSecret = process.env["LIVEKIT_API_SECRET"]?.trim();
-  if (!url || !apiKey || !apiSecret || !/^https?:\/\//i.test(url)) return null;
+  if (!url || !apiKey || !apiSecret || !/^(https?|wss?):\/\//i.test(url)) return null;
   return { url: url.replace(/^http:/i, "ws:").replace(/^https:/i, "wss:").replace(/\/+$/, ""), apiKey, apiSecret };
 }
 async function getUser(request: Request, config: SupabaseConfig) {
