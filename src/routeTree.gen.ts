@@ -27,6 +27,7 @@ import { Route as AuthenticatedPerfilRouteImport } from './routes/_authenticated
 import { Route as AuthenticatedPublicacoesRouteImport } from './routes/_authenticated/publicacoes'
 import { Route as AuthenticatedReunioesRouteImport } from './routes/_authenticated/reunioes'
 import { Route as ApiRealtimekitSessionRouteImport } from './routes/api/realtimekit-session'
+import { Route as ApiLivekitSessionRouteImport } from './routes/api/livekit-session'
 import { Route as AuthenticatedChatConversationIdRouteImport } from './routes/_authenticated/chat.$conversationId'
 import { Route as ApiPublicDavPushRouteImport } from './routes/api/public/dav-push'
 import { Route as ApiPublicDavPushTickRouteImport } from './routes/api/public/dav-push-tick'
@@ -123,6 +124,11 @@ const AuthenticatedReunioesRoute = AuthenticatedReunioesRouteImport.update({
 const ApiRealtimekitSessionRoute = ApiRealtimekitSessionRouteImport.update({
   id: '/api/realtimekit-session',
   path: '/api/realtimekit-session',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiLivekitSessionRoute = ApiLivekitSessionRouteImport.update({
+  id: '/api/livekit-session',
+  path: '/api/livekit-session',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AuthenticatedChatConversationIdRoute =
@@ -418,6 +424,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiRealtimekitSessionRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/livekit-session': {
+      id: '/api/livekit-session'
+      path: '/api/livekit-session'
+      fullPath: '/api/livekit-session'
+      preLoaderRoute: typeof ApiLivekitSessionRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/_authenticated/chat/$conversationId': {
       id: '/_authenticated/chat/$conversationId'
       path: '/$conversationId'
@@ -494,6 +507,7 @@ const rootRouteChildren: RootRouteChildren = {
   AuthRoute: AuthRoute,
   ResetPasswordRoute: ResetPasswordRoute,
   ApiRealtimekitSessionRoute: ApiRealtimekitSessionRoute,
+  ApiLivekitSessionRoute: ApiLivekitSessionRoute,
   ApiPublicDavPushRoute: ApiPublicDavPushRoute,
   ApiPublicDavPushTickRoute: ApiPublicDavPushTickRoute,
 }
