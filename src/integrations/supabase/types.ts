@@ -975,6 +975,14 @@ export type Database = {
         Args: { _pin: string }
         Returns: boolean
       }
+      register_firebase_push_token: {
+        Args: { _platform: string; _token: string }
+        Returns: undefined
+      }
+      register_firebase_push_token_from_platform: {
+        Args: { _platform: string; _token: string }
+        Returns: undefined
+      }
       respond_chat_call: {
         Args: { _action: string; _answer?: string; _call: string }
         Returns: undefined
