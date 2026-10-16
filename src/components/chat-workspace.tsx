@@ -1366,7 +1366,7 @@ type ChatCallRow = {
   caller_id: string;
   callee_id: string;
   status: string;
-  offer: string;
+  offer: unknown;
   answer: string | null;
   created_at: string;
 };
@@ -1387,10 +1387,13 @@ type CallSessionResponse = {
   error?: string;
 };
 
-function getCallMetadata(value: string | null | undefined): CallMetadata | null {
-  if (!value) return null;
+function getCallMetadata(value: unknown): CallMetadata | null {
+  if (value == null || value === "") return null;
   try {
-    const metadata = JSON.parse(value) as Partial<CallMetadata>;
+    // Handle both JSON strings and Supabase json/jsonb objects.
+    const parsed: unknown = typeof value === "string" ? JSON.parse(value) : value;
+    if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) return null;
+    const metadata = parsed as Partial<CallMetadata>;
     if (
       metadata.provider === "livekit" &&
       typeof metadata.roomName === "string" &&
@@ -1408,7 +1411,7 @@ function getCallMetadata(value: string | null | undefined): CallMetadata | null 
 function getCallMediaType(call: ChatCallRow | null | undefined): "audio" | "video" {
   const metadata = getCallMetadata(call?.offer);
   if (metadata) return metadata.mediaType;
-  return call?.offer.includes("m=video") ? "video" : "audio";
+  return typeof call?.offer === "string" && call.offer.includes("m=video") ? "video" : "audio";
 }
 
 async function requestCallSession(body: Record<string, unknown>): Promise<CallSessionResponse> {
