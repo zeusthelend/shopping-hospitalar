@@ -34,14 +34,12 @@ Administrators and employees must register each device from **Notificações →
 
 ## Configuração de chamadas de áudio e vídeo
 
-A chamada usa o Cloudflare RealtimeKit. No ambiente do Worker `shopping-hospitalar`, configure os seguintes valores como variáveis e secrets do servidor:
+A integração de chamadas desta branch usa o LiveKit. No Worker de produção `shopping-hospitalar`, configure no servidor:
 
-- `CLOUDFLARE_ACCOUNT_ID`: identificador da conta Cloudflare.
-- `CLOUDFLARE_REALTIMEKIT_APP_ID`: ID do app RealtimeKit.
-- `CLOUDFLARE_API_TOKEN`: token Cloudflare com permissão Realtime; mantenha-o como secret do Worker e nunca use o prefixo `VITE_`.
-- `CLOUDFLARE_REALTIMEKIT_HOST_PRESET` (opcional): preset de quem inicia a chamada. O padrão é `group_call_host`.
-- `CLOUDFLARE_REALTIMEKIT_PARTICIPANT_PRESET` (opcional): preset de quem atende. O padrão é `group_call_participant`.
+- `LIVEKIT_URL`: URL do servidor LiveKit (normalmente começa com `wss://`).
+- `LIVEKIT_API_KEY`: chave de API do projeto LiveKit.
+- `LIVEKIT_API_SECRET`: segredo de API do projeto LiveKit. Mantenha-o como secret do Worker; nunca use o prefixo `VITE_` e nunca o exponha no navegador.
 
-O app precisa ter os presets `group_call_host` e `group_call_participant`, ou os nomes configurados acima. O servidor valida a sessão Supabase e a participação na conversa antes de criar uma sala ou emitir um token de participante. O token RealtimeKit nunca é persistido no banco.
+A rota `/api/livekit-session` valida a sessão Supabase, a aprovação do usuário e a participação na conversa antes de emitir tokens de curta duração. O token é assinado no servidor e não é persistido no banco. A URL e o token são enviados ao cliente apenas para conectar à sala autorizada.
 
-O fluxo mantém o toque e as permissões de chamadas do chat e inicia a mídia somente depois que a chamada é atendida.
+A rota e o componente antigos do Cloudflare RealtimeKit permanecem no repositório como caminho de retorno; não remova os secrets antigos até que áudio e vídeo tenham sido testados com dois usuários reais e a nova versão esteja confirmada em produção.
