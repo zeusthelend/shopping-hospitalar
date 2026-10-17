@@ -32,7 +32,7 @@ function MinhasVendas() {
   const [selectedSeller, setSelectedSeller] = useState("all");
   const isManager = !!me?.canViewAllSales;
   const userId = me?.profile?.id;
-  const positionName = String((me?.profile as (typeof me.profile & { positions?: { name?: string } | null }) | undefined)?.positions?.name ?? "")
+  const positionName = String((me?.profile as { positions?: { name?: string } | null } | null | undefined)?.positions?.name ?? "")
     .normalize("NFD")
     .replace(/[\\u0300-\\u036f]/g, "")
     .toLowerCase();
