@@ -55,6 +55,8 @@ export function useMe() {
         isAdmin: r.includes("admin"),
         canManage,
         isStockLead,
+        isStockRole,
+        canAccessStockTools: isStockRole || isStockLead,
         canRegisterDavForSeller: canManage || isStockRole,
         canViewAllSales: canManage || isStockLead,
       };
