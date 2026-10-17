@@ -23,6 +23,7 @@ import { Route as AuthenticatedDocumentosRouteImport } from './routes/_authentic
 import { Route as AuthenticatedFuncionariosRouteImport } from './routes/_authenticated/funcionarios'
 import { Route as AuthenticatedMinhasVendasRouteImport } from './routes/_authenticated/minhas-vendas'
 import { Route as AuthenticatedEstoqueLembretesRouteImport } from './routes/_authenticated/estoque-lembretes'
+import { Route as AuthenticatedAdministrativoLembretesRouteImport } from './routes/_authenticated/administrativo-lembretes'
 import { Route as AuthenticatedNotificacoesRouteImport } from './routes/_authenticated/notificacoes'
 import { Route as AuthenticatedPerfilRouteImport } from './routes/_authenticated/perfil'
 import { Route as AuthenticatedPublicacoesRouteImport } from './routes/_authenticated/publicacoes'
@@ -104,6 +105,11 @@ const AuthenticatedEstoqueLembretesRoute = AuthenticatedEstoqueLembretesRouteImp
   path: '/estoque-lembretes',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const AuthenticatedAdministrativoLembretesRoute = AuthenticatedAdministrativoLembretesRouteImport.update({
+  id: '/administrativo-lembretes',
+  path: '/administrativo-lembretes',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
 const AuthenticatedNotificacoesRoute =
   AuthenticatedNotificacoesRouteImport.update({
     id: '/notificacoes',
@@ -162,6 +168,7 @@ export interface FileRoutesByFullPath {
   '/funcionarios': typeof AuthenticatedFuncionariosRoute
   '/minhas-vendas': typeof AuthenticatedMinhasVendasRoute
   '/estoque-lembretes': typeof AuthenticatedEstoqueLembretesRoute
+  '/administrativo-lembretes': typeof AuthenticatedAdministrativoLembretesRoute
   '/notificacoes': typeof AuthenticatedNotificacoesRoute
   '/perfil': typeof AuthenticatedPerfilRoute
   '/publicacoes': typeof AuthenticatedPublicacoesRoute
@@ -471,6 +478,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedFuncionariosRoute: typeof AuthenticatedFuncionariosRoute
   AuthenticatedMinhasVendasRoute: typeof AuthenticatedMinhasVendasRoute
   AuthenticatedEstoqueLembretesRoute: typeof AuthenticatedEstoqueLembretesRoute
+  AuthenticatedAdministrativoLembretesRoute: typeof AuthenticatedAdministrativoLembretesRoute
   AuthenticatedNotificacoesRoute: typeof AuthenticatedNotificacoesRoute
   AuthenticatedPerfilRoute: typeof AuthenticatedPerfilRoute
   AuthenticatedPublicacoesRoute: typeof AuthenticatedPublicacoesRoute
@@ -488,6 +496,7 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedFuncionariosRoute: AuthenticatedFuncionariosRoute,
   AuthenticatedMinhasVendasRoute: AuthenticatedMinhasVendasRoute,
   AuthenticatedEstoqueLembretesRoute: AuthenticatedEstoqueLembretesRoute,
+  AuthenticatedAdministrativoLembretesRoute: AuthenticatedAdministrativoLembretesRoute,
   AuthenticatedNotificacoesRoute: AuthenticatedNotificacoesRoute,
   AuthenticatedPerfilRoute: AuthenticatedPerfilRoute,
   AuthenticatedPublicacoesRoute: AuthenticatedPublicacoesRoute,
