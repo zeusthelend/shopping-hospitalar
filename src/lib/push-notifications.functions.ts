@@ -18,3 +18,13 @@ export const notifyChatMessage = createServerFn({ method: "POST" })
     const { deliverChatMessagePush } = await import("./push-delivery.server");
     return deliverChatMessagePush(context.userId, data.messageId);
   });
+
+const chatCallPushSchema = z.object({ callId: z.string().uuid() });
+
+export const notifyChatCall = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input) => chatCallPushSchema.parse(input))
+  .handler(async ({ data, context }) => {
+    const { deliverChatCallPush } = await import("./push-delivery.server");
+    return deliverChatCallPush(context.userId, data.callId);
+  });
