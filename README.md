@@ -31,10 +31,9 @@ Configure Firebase Cloud Messaging for the Android application (`br.com.shopping
 
 Administrators and employees must register each device from **Notificações → Ativar no celular** and grant notification permission. DAV and chat alerts are sent through Firebase and can appear when the app is in the background or closed, including while the screen is locked. Web users must enable browser notifications on the published HTTPS site; background delivery depends on the browser supporting Firebase Web Push.
 
-
 ## Configuração de chamadas de áudio e vídeo
 
-A integração de chamadas desta branch usa o LiveKit. No Worker de produção `shopping-hospitalar`, configure no servidor:
+A integração ativa de chamadas usa somente o LiveKit. No Worker de produção `shopping-hospitalar`, configure:
 
 - `LIVEKIT_URL`: URL do servidor LiveKit (normalmente começa com `wss://`).
 - `LIVEKIT_API_KEY`: chave de API do projeto LiveKit.
@@ -42,4 +41,4 @@ A integração de chamadas desta branch usa o LiveKit. No Worker de produção `
 
 A rota `/api/livekit-session` valida a sessão Supabase, a aprovação do usuário e a participação na conversa antes de emitir tokens de curta duração. O token é assinado no servidor e não é persistido no banco. A URL e o token são enviados ao cliente apenas para conectar à sala autorizada.
 
-A rota e o componente antigos do Cloudflare RealtimeKit permanecem no repositório como caminho de retorno; não remova os secrets antigos até que áudio e vídeo tenham sido testados com dois usuários reais e a nova versão esteja confirmada em produção.
+O Cloudflare RealtimeKit foi removido do fluxo de chamadas. O Cloudflare Worker continua sendo o runtime de hospedagem da aplicação; não remova o Worker nem as configurações necessárias para servir o site.
