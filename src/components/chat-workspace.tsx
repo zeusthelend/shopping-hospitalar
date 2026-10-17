@@ -161,6 +161,67 @@ export function ChatWorkspace({ conversationId }: { conversationId?: string | un
     },
     refetchInterval: 15_000,
   });
+  // Track online transitions without announcing everyone on the initial page load.
+  const previousPresence = useRef<Map<string, boolean> | null>(null);
+  useEffect(() => {
+    if (!profiles.length || !me?.profile?.id) return;
+    const current = new Map(
+      profiles.map((profile) => [profile.id, livePresence(profile) === "online"]),
+    );
+    const previous = previousPresence.current;
+    previousPresence.current = current;
+    if (!previous) return;
+
+    for (const profile of profiles) {
+      if (profile.id === me.profile.id) continue;
+      const wasOnline = previous.get(profile.id) ?? false;
+      const isOnline = current.get(profile.id) ?? false;
+      if (wasOnline || !isOnline) continue;
+
+      // A short two-note chime; browser audio policies may require a prior user interaction.
+      try {
+        const AudioContextClass = window.AudioContext;
+        if (AudioContextClass) {
+          const audioContext = new AudioContextClass();
+          const now = audioContext.currentTime;
+          [880, 1174].forEach((frequency, index) => {
+            const oscillator = audioContext.createOscillator();
+            const gain = audioContext.createGain();
+            oscillator.type = "sine";
+            oscillator.frequency.value = frequency;
+            gain.gain.setValueAtTime(0.0001, now + index * 0.13);
+            gain.gain.exponentialRampToValueAtTime(0.12, now + index * 0.13 + 0.025);
+            gain.gain.exponentialRampToValueAtTime(0.0001, now + index * 0.13 + 0.11);
+            oscillator.connect(gain);
+            gain.connect(audioContext.destination);
+            oscillator.start(now + index * 0.13);
+            oscillator.stop(now + index * 0.13 + 0.12);
+          });
+          window.setTimeout(() => void audioContext.close().catch(() => undefined), 600);
+        }
+      } catch {
+        // Presence notifications should still appear when sound is unavailable.
+      }
+
+      toast.custom((toastId) => (
+        <div role="status" className="flex w-[min(360px,calc(100vw-32px))] items-center gap-3 rounded-2xl border bg-card p-3 text-card-foreground shadow-xl animate-in slide-in-from-top-3 duration-300">
+          <div className="relative shrink-0">
+            <Avatar className="h-12 w-12 ring-2 ring-success/60 ring-offset-2 ring-offset-background">
+              <AvatarImage src={profile.avatar_url ?? undefined} alt={profile.full_name} />
+              <AvatarFallback>{initials(profile.full_name)}</AvatarFallback>
+            </Avatar>
+            <span className="absolute bottom-0 right-0 h-3.5 w-3.5 rounded-full border-2 border-card bg-success" />
+          </div>
+          <div className="min-w-0 flex-1">
+            <p className="text-sm font-semibold">{profile.full_name}</p>
+            <p className="text-xs text-muted-foreground">Está online agora</p>
+          </div>
+          <button type="button" onClick={() => toast.dismiss(toastId)} className="rounded-md px-2 py-1 text-xs text-muted-foreground hover:bg-muted" aria-label="Fechar notificação">Fechar</button>
+        </div>
+      ), { duration: 5000, position: "top-right" });
+    }
+  }, [profiles, me?.profile?.id]);
+
   const conversationIds = memberships.map((x) => x.conversation_id);
   const { data: allParticipants = [] } = useQuery({
     queryKey: ["chat-participants", conversationIds.join(",")],
@@ -193,6 +254,9 @@ export function ChatWorkspace({ conversationId }: { conversationId?: string | un
       .on("postgres_changes", { event: "*", schema: "public", table: "chat_participants" }, () => {
         void qc.invalidateQueries({ queryKey: ["chat-conversations"] });
         void qc.invalidateQueries({ queryKey: ["chat-participants"] });
+      })
+      .on("postgres_changes", { event: "UPDATE", schema: "public", table: "profiles" }, () => {
+        void qc.invalidateQueries({ queryKey: ["chat-profiles"] });
       })
       .subscribe();
     return () => {
