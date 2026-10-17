@@ -257,3 +257,137 @@
     transition: none !important;
   }
 }
+
+/* Shopping Hospitalar — refreshed animated surface system for cards/templates. */
+@keyframes sh-template-enter {
+  from { opacity: 0; transform: translate3d(0, 12px, 0) scale(.985); }
+  to { opacity: 1; transform: translate3d(0, 0, 0) scale(1); }
+}
+@keyframes sh-template-sheen {
+  0% { transform: translateX(-130%) skewX(-18deg); opacity: 0; }
+  25% { opacity: .35; }
+  65%, 100% { transform: translateX(240%) skewX(-18deg); opacity: 0; }
+}
+@keyframes sh-template-orbit {
+  0%, 100% { box-shadow: 0 8px 24px -18px color-mix(in oklch, var(--color-ring) 24%, transparent); }
+  50% { box-shadow: 0 14px 34px -18px color-mix(in oklch, var(--color-ring) 42%, transparent); }
+}
+
+/* The shared Card primitive is used across dashboard, DAV, people and settings views. */
+.rounded-xl.border.bg-card,
+.rounded-2xl.border.bg-card,
+[class~="shadow-card"] {
+  position: relative;
+  isolation: isolate;
+  border-color: color-mix(in oklch, var(--color-border) 76%, var(--color-ring) 24%);
+  background-image: linear-gradient(145deg,
+    color-mix(in oklch, var(--color-card) 98%, white 2%),
+    var(--color-card) 72%);
+  box-shadow: 0 1px 2px color-mix(in oklch, var(--color-foreground) 4%, transparent),
+    0 10px 28px -20px color-mix(in oklch, var(--color-ring) 34%, transparent);
+  animation: sh-template-enter 420ms cubic-bezier(.2,.75,.25,1) both;
+  transition: transform 240ms cubic-bezier(.2,.8,.2,1),
+    box-shadow 240ms ease, border-color 240ms ease, background-color 240ms ease;
+}
+.rounded-xl.border.bg-card::before,
+.rounded-2xl.border.bg-card::before,
+[class~="shadow-card"]::before {
+  content: "";
+  position: absolute;
+  z-index: 0;
+  pointer-events: none;
+  top: 0;
+  left: 12%;
+  right: 12%;
+  height: 2px;
+  border-radius: 999px;
+  background: linear-gradient(90deg, transparent, var(--color-ring), var(--color-highlight), transparent);
+  opacity: .48;
+  transform: scaleX(.35);
+  transform-origin: center;
+  transition: transform 260ms ease, opacity 260ms ease;
+}
+.rounded-xl.border.bg-card > *,
+.rounded-2xl.border.bg-card > *,
+[class~="shadow-card"] > * {
+  position: relative;
+}
+@media (hover: hover) and (pointer: fine) {
+  .rounded-xl.border.bg-card:hover,
+  .rounded-2xl.border.bg-card:hover,
+  [class~="shadow-card"]:hover {
+    transform: translate3d(0, -3px, 0);
+    border-color: color-mix(in oklch, var(--color-ring) 42%, var(--color-border));
+    box-shadow: 0 16px 36px -22px color-mix(in oklch, var(--color-ring) 52%, transparent),
+      0 4px 10px -8px color-mix(in oklch, var(--color-foreground) 18%, transparent);
+  }
+  .rounded-xl.border.bg-card:hover::before,
+  .rounded-2xl.border.bg-card:hover::before,
+  [class~="shadow-card"]:hover::before {
+    transform: scaleX(1);
+    opacity: .9;
+  }
+}
+
+/* Richer, clearer selected states for tabs, chips and segmented navigation. */
+[role="tab"],
+[data-state="active"][role="tab"],
+[data-state="active"][role="menuitem"] {
+  transition: color 180ms ease, background-color 180ms ease,
+    box-shadow 220ms ease, transform 180ms ease;
+}
+[role="tab"][data-state="active"],
+[data-state="active"][role="tab"] {
+  box-shadow: inset 0 -2px 0 var(--color-ring), 0 5px 16px -12px var(--color-ring);
+}
+[role="tab"]:not([data-state="active"]):hover {
+  background-color: color-mix(in oklch, var(--color-accent) 68%, transparent);
+}
+
+/* Inputs feel like part of the refreshed interface while preserving native semantics. */
+input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"]),
+textarea,
+select {
+  transition: border-color 180ms ease, box-shadow 180ms ease, background-color 180ms ease;
+}
+input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"]):focus-visible,
+textarea:focus-visible,
+select:focus-visible {
+  border-color: var(--color-ring);
+  box-shadow: 0 0 0 3px color-mix(in oklch, var(--color-ring) 16%, transparent);
+  outline: none;
+}
+
+@media (hover: none), (pointer: coarse) {
+  .rounded-xl.border.bg-card:active,
+  .rounded-2xl.border.bg-card:active,
+  [class~="shadow-card"]:active {
+    transform: scale(.992);
+    border-color: color-mix(in oklch, var(--color-ring) 40%, var(--color-border));
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .rounded-xl.border.bg-card,
+  .rounded-2xl.border.bg-card,
+  [class~="shadow-card"],
+  .rounded-xl.border.bg-card::before,
+  .rounded-2xl.border.bg-card::before,
+  [class~="shadow-card"]::before,
+  [role="tab"],
+  input,
+  textarea,
+  select {
+    animation: none !important;
+    transition: none !important;
+    scroll-behavior: auto !important;
+  }
+  .rounded-xl.border.bg-card:hover,
+  .rounded-2xl.border.bg-card:hover,
+  [class~="shadow-card"]:hover,
+  .rounded-xl.border.bg-card:active,
+  .rounded-2xl.border.bg-card:active,
+  [class~="shadow-card"]:active {
+    transform: none !important;
+  }
+}
+
