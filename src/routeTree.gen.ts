@@ -182,7 +182,6 @@ export interface FileRoutesByTo {
   '/publicacoes': typeof AuthenticatedPublicacoesRoute
   '/reunioes': typeof AuthenticatedReunioesRoute
   '/api/livekit-session': typeof ApiLivekitSessionRoute
-  '/api/realtimekit-session': typeof ApiRealtimekitSessionRoute
   '/chat/$conversationId': typeof AuthenticatedChatConversationIdRoute
   '/api/public/dav-push': typeof ApiPublicDavPushRoute
   '/api/public/dav-push-tick': typeof ApiPublicDavPushTickRoute
@@ -207,7 +206,6 @@ export interface FileRoutesById {
   '/_authenticated/publicacoes': typeof AuthenticatedPublicacoesRoute
   '/_authenticated/reunioes': typeof AuthenticatedReunioesRoute
   '/api/livekit-session': typeof ApiLivekitSessionRoute
-  '/api/realtimekit-session': typeof ApiRealtimekitSessionRoute
   '/_authenticated/chat/$conversationId': typeof AuthenticatedChatConversationIdRoute
   '/api/public/dav-push': typeof ApiPublicDavPushRoute
   '/api/public/dav-push-tick': typeof ApiPublicDavPushTickRoute
@@ -254,7 +252,6 @@ export interface FileRouteTypes {
     | '/publicacoes'
     | '/reunioes'
     | '/api/livekit-session'
-    | '/api/realtimekit-session'
     | '/chat/$conversationId'
     | '/api/public/dav-push'
     | '/api/public/dav-push-tick'
@@ -278,7 +275,6 @@ export interface FileRouteTypes {
     | '/_authenticated/publicacoes'
     | '/_authenticated/reunioes'
     | '/api/livekit-session'
-    | '/api/realtimekit-session'
     | '/_authenticated/chat/$conversationId'
     | '/api/public/dav-push'
     | '/api/public/dav-push-tick'
