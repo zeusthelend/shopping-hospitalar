@@ -487,6 +487,7 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedDocumentosRoute: AuthenticatedDocumentosRoute,
   AuthenticatedFuncionariosRoute: AuthenticatedFuncionariosRoute,
   AuthenticatedMinhasVendasRoute: AuthenticatedMinhasVendasRoute,
+  AuthenticatedEstoqueLembretesRoute: AuthenticatedEstoqueLembretesRoute,
   AuthenticatedNotificacoesRoute: AuthenticatedNotificacoesRoute,
   AuthenticatedPerfilRoute: AuthenticatedPerfilRoute,
   AuthenticatedPublicacoesRoute: AuthenticatedPublicacoesRoute,
