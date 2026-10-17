@@ -60,7 +60,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
 import { initials, livePresence } from "@/components/brand";
-import { notifyChatMessage } from "@/lib/push-notifications.functions";
+import { notifyChatCall, notifyChatMessage } from "@/lib/push-notifications.functions";
 
 const CallMediaSession = lazy(() => import("./livekit-call-media"));
 
@@ -1652,6 +1652,13 @@ function CallControl({
       setParticipantToken(session.token ?? null);
       setLiveKitServerUrl(session.serverUrl ?? null);
       setCallState("ringing");
+      // The server sends a high-priority push so the callee is notified outside the open chat.
+      void notifyChatCall({ data: { callId: data } })
+        .then(({ delivered, failed }) => {
+          if (failed > 0) console.warn("Incoming-call push failed for some devices.");
+          if (delivered === 0) console.info("No registered push device received the call alert.");
+        })
+        .catch((pushError: unknown) => console.error("Unable to send incoming-call push", pushError));
     } catch (error) {
       clearCallMedia();
       setCaller(null);
