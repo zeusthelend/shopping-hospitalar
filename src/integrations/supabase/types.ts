@@ -14,7 +14,7 @@ export type Database = {
   }
   public: {
     Tables: {
-      stock_reminders: {
+      administrative_reminders: {
         Row: {
           completed_at: string | null
           created_at: string
