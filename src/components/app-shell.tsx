@@ -44,6 +44,7 @@ const NAV = [
   { to: "/minhas-vendas", label: "Minhas Vendas", icon: ChartNoAxesCombined },
   { to: "/reunioes", label: "Reuniões", icon: CalendarDays },
   { to: "/estoque-lembretes", label: "Agenda do Estoque", icon: CalendarClock },
+  { to: "/administrativo-lembretes", label: "Agenda Administrativa", icon: CalendarClock },
   { to: "/avisos", label: "Avisos", icon: Megaphone },
   { to: "/publicacoes", label: "Publicações", icon: Newspaper },
   { to: "/notificacoes", label: "Notificações", icon: Bell },
@@ -59,7 +60,10 @@ function NavList({
   onNavigate?: (() => void) | undefined;
 }) {
   const { data: me } = useMe();
-  const visibleNav = NAV.filter((item) => item.to !== "/estoque-lembretes" || me?.canAccessStockTools);
+  const visibleNav = NAV.filter((item) =>
+    (item.to !== "/estoque-lembretes" || me?.canAccessStockTools) &&
+    (item.to !== "/administrativo-lembretes" || me?.canAccessAdministrativeTools)
+  );
   const items = isAdmin
     ? [...visibleNav, { to: "/admin", label: "Administração", icon: Wrench } as const]
     : visibleNav;
@@ -316,7 +320,10 @@ export function AppShell({ children }: { children: ReactNode }) {
           )}
         </main>
         <nav className="fixed inset-x-0 bottom-0 z-30 grid grid-cols-5 border-t bg-card lg:hidden">
-          {NAV.filter((i) => i.to !== "/estoque-lembretes" || me?.canAccessStockTools).slice(0, 5).map((i) => (
+          {NAV.filter((i) =>
+            (i.to !== "/estoque-lembretes" || me?.canAccessStockTools) &&
+            (i.to !== "/administrativo-lembretes" || me?.canAccessAdministrativeTools)
+          ).slice(0, 5).map((i) => (
             <Link
               key={i.to}
               to={i.to}
