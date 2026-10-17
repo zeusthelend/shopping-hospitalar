@@ -5,6 +5,7 @@ import { useState } from "react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useMe } from "@/lib/auth";
+import { notifyChatMessage } from "@/lib/push-notifications.functions";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { PageHeader, Empty } from "@/components/brand";
 import { Badge } from "@/components/ui/badge";
@@ -441,6 +442,9 @@ function DavDialog({
           }).select("id").single();
           if (messageError) throw messageError;
           if (!message?.id) throw new Error("O chat não confirmou o envio.");
+          void notifyChatMessage({ data: { messageId: message.id } }).catch(() => {
+            toast.warning("O aviso foi enviado no chat, mas a notificação push pode não ter sido entregue.");
+          });
           toast.success("DAV cadastrado e aviso enviado no chat do vendedor.");
         } catch {
           toast.warning("DAV cadastrado, mas não foi possível enviar o aviso no chat. Abra o chat do vendedor para avisá-lo.");
@@ -494,7 +498,7 @@ function DavDialog({
                     <div key={seller.id} className={`flex items-center gap-3 rounded-xl border p-3 transition-colors ${selected ? "border-primary bg-primary/5" : "border-transparent bg-muted/40"}`}>
                       <Avatar className="h-11 w-11 shrink-0">
                         <AvatarImage src={seller.avatar_url ?? undefined} alt={seller.full_name} />
-                        <AvatarFallback>{seller.full_name.split(/\\s+/).map((part) => part[0]).join("").slice(0, 2).toUpperCase()}</AvatarFallback>
+                        <AvatarFallback>{seller.full_name.split(/\s+/).map((part) => part[0]).join("").slice(0, 2).toUpperCase()}</AvatarFallback>
                       </Avatar>
                       <button type="button" onClick={() => setSelectedSeller(seller.id)} className="min-w-0 flex-1 text-left" aria-pressed={selected}>
                         <span className="block truncate text-sm font-semibold">{seller.full_name}</span>
