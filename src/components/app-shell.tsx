@@ -319,33 +319,20 @@ export function AppShell({ children }: { children: ReactNode }) {
             children
           )}
         </main>
-        <nav className="fixed inset-x-0 bottom-0 z-30 grid grid-cols-5 border-t bg-card lg:hidden">
-          {(me?.canAccessStockTools
-            ? [
-                NAV[0],
-                NAV[2],
-                NAV[7],
-                NAV[4],
-                NAV[11],
-              ]
-            : me?.canAccessAdministrativeTools
-              ? [
-                  NAV[0],
-                  NAV[2],
-                  NAV[8],
-                  NAV[4],
-                  NAV[11],
-                ]
-              : NAV.filter((i) =>
-                  i.to !== "/estoque-lembretes" &&
-                  i.to !== "/administrativo-lembretes"
-                ).slice(0, 5)
-          ).map((i) => (
+        <nav className="fixed inset-x-0 bottom-0 z-30 flex justify-around border-t bg-card lg:hidden">
+          {[
+            NAV[0],
+            NAV[2],
+            ...(me?.canAccessStockTools ? [NAV[7]] : []),
+            ...(me?.canAccessAdministrativeTools ? [NAV[8]] : []),
+            NAV[4],
+            NAV[11],
+          ].map((i) => (
             <Link
               key={i.to}
               to={i.to}
               className={cn(
-                "flex min-w-0 flex-col items-center gap-1 overflow-hidden py-2.5 text-[10px] text-muted-foreground sm:text-[11px]",
+                "flex min-w-0 flex-1 flex-col items-center gap-1 overflow-hidden py-2.5 text-[10px] text-muted-foreground sm:text-[11px]",
               )}
               activeProps={{ className: "!text-highlight font-semibold" }}
             >
