@@ -217,3 +217,43 @@
     filter: none !important;
   }
 }
+
+
+/* Touch-first feedback: make the interaction visible on phones without hover. */
+@keyframes sh-touch-pulse {
+  0%, 100% {
+    box-shadow: 0 0 0 0 color-mix(in oklch, var(--color-ring) 0%, transparent),
+      0 4px 12px -9px currentColor;
+    filter: saturate(1);
+  }
+  50% {
+    box-shadow: 0 0 0 3px color-mix(in oklch, var(--color-ring) 18%, transparent),
+      0 7px 18px -8px color-mix(in oklch, var(--color-ring) 30%, transparent);
+    filter: saturate(1.12);
+  }
+}
+
+@media (hover: none), (pointer: coarse) {
+  :where(button, [role="button"], a[role="button"], input[type="button"], input[type="submit"], input[type="reset"]) {
+    transition: transform 140ms cubic-bezier(0.2, 0.8, 0.2, 1),
+      box-shadow 160ms ease, filter 160ms ease;
+  }
+
+  :where(button, [role="button"], a[role="button"], input[type="button"], input[type="submit"], input[type="reset"]):not(:disabled):not([aria-disabled="true"]):active {
+    transform: scale(0.91);
+    filter: brightness(1.12) saturate(1.15);
+    box-shadow: 0 0 0 4px color-mix(in oklch, var(--color-ring) 22%, transparent);
+  }
+
+  :where(button, [role="button"], a[role="button"])[class*="bg-primary"]:not(:disabled):not([aria-disabled="true"]),
+  :where(button, [role="button"], a[role="button"])[data-variant="default"]:not(:disabled):not([aria-disabled="true"]) {
+    animation: sh-touch-pulse 2.4s ease-in-out infinite;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :where(button, [role="button"], a[role="button"], input[type="button"], input[type="submit"], input[type="reset"]) {
+    animation: none !important;
+    transition: none !important;
+  }
+}
