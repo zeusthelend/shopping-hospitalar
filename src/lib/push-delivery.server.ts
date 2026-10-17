@@ -233,3 +233,69 @@ export async function deliverOverdueDavPushes(onlyUserId?: string) {
   }
   return { delivered };
 }
+
+/** Deliver a high-priority push to the callee even when the chat screen is closed. */
+export async function deliverChatCallPush(userId: string, callId: string) {
+  const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+  const { data: call, error: callError } = await supabaseAdmin
+    .from("chat_calls")
+    .select("id,conversation_id,caller_id,callee_id,status,offer,created_at")
+    .eq("id", callId)
+    .eq("caller_id", userId)
+    .maybeSingle();
+  if (callError) throw callError;
+  if (!call || call.status !== "ringing") {
+    throw new Error("Active outgoing call was not found.");
+  }
+  // Ignore stale requests; calls older than one minute are no longer ringing in the UI.
+  if (Date.now() - new Date(call.created_at).getTime() > 60_000) {
+    return { delivered: 0, failed: 0 };
+  }
+
+  const [
+    { data: caller, error: callerError },
+    { data: callee, error: calleeError },
+    { data: targets, error: targetsError },
+  ] = await Promise.all([
+    supabaseAdmin.from("profiles").select("full_name").eq("id", userId).maybeSingle(),
+    supabaseAdmin.from("profiles").select("id").eq("id", call.callee_id).eq("approved", true).eq("active", true).maybeSingle(),
+    supabaseAdmin.from("firebase_push_tokens").select("id,user_id,token").eq("user_id", call.callee_id),
+  ]);
+  if (callerError) throw callerError;
+  if (calleeError) throw calleeError;
+  if (targetsError) throw targetsError;
+  if (!caller || !callee || !targets?.length) return { delivered: 0, failed: 0 };
+
+  let mediaType: "audio" | "video" = "audio";
+  try {
+    const raw = call.offer;
+    const parsed: unknown = typeof raw === "string" ? JSON.parse(raw) : raw;
+    if (parsed && typeof parsed === "object" && "mediaType" in parsed && parsed.mediaType === "video") {
+      mediaType = "video";
+    }
+  } catch {
+    // Older call offers still receive a generic audio-call alert.
+  }
+
+  let delivered = 0;
+  let failed = 0;
+  for (const target of targets) {
+    const result = await sendFirebaseMessage(target, {
+      title: mediaType === "video" ? "Chamada de vídeo recebida" : "Chamada de áudio recebida",
+      body: caller.full_name + " está ligando para você.",
+      path: "/chat/" + call.conversation_id,
+      tag: "incoming-call-" + call.id,
+      channelId: "incoming_calls",
+      requireInteraction: true,
+      vibrate: [500, 250, 500, 250, 800],
+    });
+    if (result === "sent") delivered += 1;
+    if (result === "failed") failed += 1;
+    if (result === "stale") {
+      const { error } = await supabaseAdmin.from("firebase_push_tokens").delete().eq("id", target.id);
+      if (error) throw error;
+    }
+  }
+  return { delivered, failed };
+}
+
