@@ -39,7 +39,7 @@ function MinhasVendas() {
   const isSeller = positionName.includes("vendedor");
   const { data: sellers = [] } = useQuery({
     queryKey: ["dav-sellers-history"],
-    enabled: isManager,
+    enabled: !!userId && (isManager || isSeller),
     queryFn: async () => {
       const { data, error } = await supabase.from("profiles").select("id,full_name,positions(name)").eq("active", true).eq("approved", true).order("full_name");
       if (error) throw error;
