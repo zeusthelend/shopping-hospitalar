@@ -191,6 +191,8 @@ export interface FileRoutesByTo {
   '/documentos': typeof AuthenticatedDocumentosRoute
   '/funcionarios': typeof AuthenticatedFuncionariosRoute
   '/minhas-vendas': typeof AuthenticatedMinhasVendasRoute
+  '/estoque-lembretes': typeof AuthenticatedEstoqueLembretesRoute
+  '/administrativo-lembretes': typeof AuthenticatedAdministrativoLembretesRoute
   '/notificacoes': typeof AuthenticatedNotificacoesRoute
   '/perfil': typeof AuthenticatedPerfilRoute
   '/publicacoes': typeof AuthenticatedPublicacoesRoute
@@ -215,6 +217,8 @@ export interface FileRoutesById {
   '/_authenticated/documentos': typeof AuthenticatedDocumentosRoute
   '/_authenticated/funcionarios': typeof AuthenticatedFuncionariosRoute
   '/_authenticated/minhas-vendas': typeof AuthenticatedMinhasVendasRoute
+  '/_authenticated/estoque-lembretes': typeof AuthenticatedEstoqueLembretesRoute
+  '/_authenticated/administrativo-lembretes': typeof AuthenticatedAdministrativoLembretesRoute
   '/_authenticated/notificacoes': typeof AuthenticatedNotificacoesRoute
   '/_authenticated/perfil': typeof AuthenticatedPerfilRoute
   '/_authenticated/publicacoes': typeof AuthenticatedPublicacoesRoute
@@ -239,6 +243,8 @@ export interface FileRouteTypes {
     | '/documentos'
     | '/funcionarios'
     | '/minhas-vendas'
+    | '/estoque-lembretes'
+    | '/administrativo-lembretes'
     | '/notificacoes'
     | '/perfil'
     | '/publicacoes'
@@ -284,6 +290,8 @@ export interface FileRouteTypes {
     | '/_authenticated/documentos'
     | '/_authenticated/funcionarios'
     | '/_authenticated/minhas-vendas'
+    | '/_authenticated/estoque-lembretes'
+    | '/_authenticated/administrativo-lembretes'
     | '/_authenticated/notificacoes'
     | '/_authenticated/perfil'
     | '/_authenticated/publicacoes'
@@ -395,6 +403,13 @@ declare module '@tanstack/react-router' {
       path: '/minhas-vendas'
       fullPath: '/minhas-vendas'
       preLoaderRoute: typeof AuthenticatedMinhasVendasRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/administrativo-lembretes': {
+      id: '/_authenticated/administrativo-lembretes'
+      path: '/administrativo-lembretes'
+      fullPath: '/administrativo-lembretes'
+      preLoaderRoute: typeof AuthenticatedAdministrativoLembretesRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/notificacoes': {
