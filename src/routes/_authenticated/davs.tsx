@@ -507,7 +507,7 @@ function DavDialog({
                         if (!userId) return;
                         const form = event.currentTarget.closest("form");
                         const formData = form ? new FormData(form) : null;
-                        const rawNumber = String(formData?.get("number") ?? "").replace(/\\D/g, "");
+                        const rawNumber = String(formData?.get("number") ?? "").replace(/\D/g, "");
                         const clientName = String(formData?.get("client") ?? "").trim();
                         if (!rawNumber || !clientName) { toast.info("Preencha o número do DAV e o cliente antes de enviar o aviso."); return; }
                         try {
