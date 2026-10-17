@@ -32,13 +32,24 @@ function MinhasVendas() {
   const [selectedSeller, setSelectedSeller] = useState("all");
   const isManager = !!me?.canViewAllSales;
   const userId = me?.profile?.id;
+  const positionName = String((me?.profile as (typeof me.profile & { positions?: { name?: string } | null }) | undefined)?.positions?.name ?? "")
+    .normalize("NFD")
+    .replace(/[\\u0300-\\u036f]/g, "")
+    .toLowerCase();
+  const isSeller = positionName.includes("vendedor");
   const { data: sellers = [] } = useQuery({
     queryKey: ["dav-sellers-history"],
     enabled: isManager,
     queryFn: async () => {
-      const { data, error } = await supabase.from("profiles").select("id,full_name").eq("active", true).eq("approved", true).order("full_name");
+      const { data, error } = await supabase.from("profiles").select("id,full_name,positions(name)").eq("active", true).eq("approved", true).order("full_name");
       if (error) throw error;
-      return data ?? [];
+      return (data ?? []).filter((person) => {
+        const name = String((person as typeof person & { positions?: { name?: string } | null }).positions?.name ?? "")
+          .normalize("NFD")
+          .replace(/[\\u0300-\\u036f]/g, "")
+          .toLowerCase();
+        return name.includes("vendedor");
+      });
     },
   });
   const sellerNames = new Map(sellers.map((seller) => [seller.id, seller.full_name]));
@@ -56,7 +67,7 @@ function MinhasVendas() {
 
   const { data: davs = [], isLoading, error } = useQuery({
     queryKey: ["sales-davs", userId, isManager, bounds.start, bounds.end],
-    enabled: !!userId,
+    enabled: !!userId && (isManager || isSeller),
     queryFn: async () => {
       let query = supabase.from("davs")
         .select("id,dav_number,client_name,status,due_at,dav_value,seller_id")
@@ -70,7 +81,8 @@ function MinhasVendas() {
       return (data ?? []) as Dav[];
     },
   });
-  const filtered = davs.filter(d => (selectedSeller === "all" || d.seller_id === selectedSeller) && `${d.dav_number} ${d.client_name} ${sellerNames.get(d.seller_id) ?? ""}`.toLowerCase().includes(search.toLowerCase()));
+  const sellerIds = new Set(sellers.map((seller) => seller.id));
+  const filtered = davs.filter(d => sellerIds.has(d.seller_id) && (selectedSeller === "all" || d.seller_id === selectedSeller) && `${d.dav_number} ${d.client_name} ${sellerNames.get(d.seller_id) ?? ""}`.toLowerCase().includes(search.toLowerCase()));
   const total = filtered.reduce((sum, d) => sum + Number(d.dav_value ?? 0), 0);
   const completed = filtered.filter(d => d.status === "concluido");
   const average = filtered.length ? total / filtered.length : 0;
@@ -92,7 +104,8 @@ function MinhasVendas() {
   return <>
     <div className="print:hidden"><PageHeader title={isManager ? "Acompanhamento de Vendas" : "Minhas Vendas"} subtitle="Acompanhe DAVs, valores e evolução das vendas." action={<div className="flex flex-wrap gap-2"><Button variant="outline" onClick={exportPdf}><Download className="mr-2 h-4 w-4"/>Exportar PDF</Button><Button onClick={exportCsv}><Download className="mr-2 h-4 w-4"/>Exportar planilha</Button></div>} /></div>
     <div className="hidden print:block mb-6"><h1 className="text-2xl font-bold">Relatório de Histórico de DAVs</h1><p>{isManager ? "Acompanhamento de Vendas — visão gerencial" : "Minhas Vendas"}</p><p>Emitido em {new Date().toLocaleString("pt-BR")}</p></div>
-    {isManager && <section className="print:hidden mb-5 rounded-xl border bg-card p-4"><div className="mb-3 flex flex-wrap items-center justify-between gap-2"><div><h2 className="font-semibold">Histórico por vendedor</h2><p className="text-sm text-muted-foreground">Selecione um vendedor para consultar somente as DAVs dele.</p></div>{selectedSeller !== "all" && <Button variant="outline" size="sm" onClick={() => setSelectedSeller("all")}>Ver toda a equipe</Button>}</div><div className="flex flex-wrap gap-2">{sellers.map(seller => <Button key={seller.id} size="sm" variant={selectedSeller === seller.id ? "default" : "outline"} onClick={() => setSelectedSeller(seller.id)}>{seller.full_name}</Button>)}</div></section>}
+    {!isManager && !isSeller ? <div className="rounded-xl border bg-card p-6 text-sm text-muted-foreground">O histórico de vendas é exclusivo para funcionários com o cargo Vendedor. DAVs cadastrados por estoquistas continuam vinculados ao vendedor responsável e não entram no histórico como vendas do estoque.</div> : null}
+    {(isManager || isSeller) && isManager && <section className="print:hidden mb-5 rounded-xl border bg-card p-4"><div className="mb-3 flex flex-wrap items-center justify-between gap-2"><div><h2 className="font-semibold">Histórico por vendedor</h2><p className="text-sm text-muted-foreground">Selecione um vendedor para consultar somente as DAVs dele.</p></div>{selectedSeller !== "all" && <Button variant="outline" size="sm" onClick={() => setSelectedSeller("all")}>Ver toda a equipe</Button>}</div><div className="flex flex-wrap gap-2">{sellers.map(seller => <Button key={seller.id} size="sm" variant={selectedSeller === seller.id ? "default" : "outline"} onClick={() => setSelectedSeller(seller.id)}>{seller.full_name}</Button>)}</div></section>}
     <div className="print:hidden mb-5 grid gap-3 rounded-xl border bg-card p-4 sm:grid-cols-2 lg:grid-cols-4">
       <div><label className="mb-1 block text-xs text-muted-foreground">Período</label><Select value={period} onValueChange={setPeriod}><SelectTrigger><SelectValue/></SelectTrigger><SelectContent><SelectItem value="today">Hoje</SelectItem><SelectItem value="week">Últimos 7 dias</SelectItem><SelectItem value="month">Este mês</SelectItem><SelectItem value="all">Todo o período</SelectItem><SelectItem value="custom">Personalizado</SelectItem></SelectContent></Select></div>
       {period === "custom" && <><div><label className="mb-1 block text-xs text-muted-foreground">De</label><Input type="date" value={from} onChange={e=>setFrom(e.target.value)}/></div><div><label className="mb-1 block text-xs text-muted-foreground">Até</label><Input type="date" value={to} onChange={e=>setTo(e.target.value)}/></div></>}
