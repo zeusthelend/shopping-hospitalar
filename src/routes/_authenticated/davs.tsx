@@ -374,6 +374,7 @@ function DavDialog({
   const [open, setOpen] = useState(false);
   const [busy, setBusy] = useState(false);
   const [selectedSeller, setSelectedSeller] = useState("");
+  const [noticeStyle, setNoticeStyle] = useState<"celebracao" | "urgente" | "padrao">("celebracao");
 
   async function save(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -490,6 +491,20 @@ function DavDialog({
           {canManage && (
             <Field label="Escolher vendedor — o DAV ficará na conta selecionada">
               <input type="hidden" name="seller" value={selectedSeller} />
+              <div className="mb-3 grid grid-cols-3 gap-2">
+                {([
+                  { id: "celebracao", emoji: "✨", title: "Destaque", subtitle: "Animado" },
+                  { id: "urgente", emoji: "⚡", title: "Urgente", subtitle: "Prioridade" },
+                  { id: "padrao", emoji: "💬", title: "Clássico", subtitle: "Discreto" },
+                ] as const).map((template) => (
+                  <button key={template.id} type="button" onClick={() => setNoticeStyle(template.id)}
+                    className={`group rounded-xl border p-2 text-center transition-all duration-300 hover:-translate-y-1 hover:shadow-lg ${noticeStyle === template.id ? "border-primary bg-primary/10 shadow-md ring-1 ring-primary/30 animate-pulse" : "border-border bg-card hover:border-primary/50"}`}>
+                    <span className="block text-xl transition-transform duration-300 group-hover:scale-125">{template.emoji}</span>
+                    <span className="block text-xs font-semibold">{template.title}</span>
+                    <span className="block text-[10px] text-muted-foreground">{template.subtitle}</span>
+                  </button>
+                ))}
+              </div>
               <div className="max-h-64 space-y-2 overflow-y-auto rounded-xl border p-2">
                 {sellers.map((seller) => {
                   const selected = selectedSeller === seller.id;
@@ -516,7 +531,7 @@ function DavDialog({
                           if (typeof conversationId !== "string" || !conversationId) throw new Error("Conversa não confirmada.");
                           const { data: message, error: messageError } = await supabase.from("chat_messages").insert({
                             conversation_id: conversationId, sender_id: userId,
-                            body: `Aviso: estou preparando o cadastro do DAV ${rawNumber.padStart(5, "0")} do cliente ${clientName.slice(0, 180)} para sua conta. Enviarei a confirmação quando concluir.`,
+                            body: noticeStyle === "urgente" ? `⚡ AVISO PRIORITÁRIO — estou preparando o DAV ${rawNumber.padStart(5, "0")} do cliente ${clientName.slice(0, 180)} para sua conta. Enviarei a confirmação assim que concluir.` : noticeStyle === "padrao" ? `Aviso: estou preparando o cadastro do DAV ${rawNumber.padStart(5, "0")} do cliente ${clientName.slice(0, 180)} para sua conta. Enviarei a confirmação quando concluir.` : `✨📦 DAV EM TRANSFERÊNCIA 📦✨ Estou preparando o DAV ${rawNumber.padStart(5, "0")} do cliente ${clientName.slice(0, 180)} para sua conta. Fique de olho: enviarei a confirmação assim que concluir! 🎉`,
                           }).select("id").single();
                           if (messageError) throw messageError;
                           if (!message?.id) throw new Error("O chat não confirmou o envio.");
