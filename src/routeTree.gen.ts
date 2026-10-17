@@ -22,6 +22,7 @@ import { Route as AuthenticatedDavsRouteImport } from './routes/_authenticated/d
 import { Route as AuthenticatedDocumentosRouteImport } from './routes/_authenticated/documentos'
 import { Route as AuthenticatedFuncionariosRouteImport } from './routes/_authenticated/funcionarios'
 import { Route as AuthenticatedMinhasVendasRouteImport } from './routes/_authenticated/minhas-vendas'
+import { Route as AuthenticatedEstoqueLembretesRouteImport } from './routes/_authenticated/estoque-lembretes'
 import { Route as AuthenticatedNotificacoesRouteImport } from './routes/_authenticated/notificacoes'
 import { Route as AuthenticatedPerfilRouteImport } from './routes/_authenticated/perfil'
 import { Route as AuthenticatedPublicacoesRouteImport } from './routes/_authenticated/publicacoes'
@@ -98,6 +99,11 @@ const AuthenticatedMinhasVendasRoute =
     path: '/minhas-vendas',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
+const AuthenticatedEstoqueLembretesRoute = AuthenticatedEstoqueLembretesRouteImport.update({
+  id: '/estoque-lembretes',
+  path: '/estoque-lembretes',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
 const AuthenticatedNotificacoesRoute =
   AuthenticatedNotificacoesRouteImport.update({
     id: '/notificacoes',
@@ -155,6 +161,7 @@ export interface FileRoutesByFullPath {
   '/documentos': typeof AuthenticatedDocumentosRoute
   '/funcionarios': typeof AuthenticatedFuncionariosRoute
   '/minhas-vendas': typeof AuthenticatedMinhasVendasRoute
+  '/estoque-lembretes': typeof AuthenticatedEstoqueLembretesRoute
   '/notificacoes': typeof AuthenticatedNotificacoesRoute
   '/perfil': typeof AuthenticatedPerfilRoute
   '/publicacoes': typeof AuthenticatedPublicacoesRoute
@@ -463,6 +470,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedDocumentosRoute: typeof AuthenticatedDocumentosRoute
   AuthenticatedFuncionariosRoute: typeof AuthenticatedFuncionariosRoute
   AuthenticatedMinhasVendasRoute: typeof AuthenticatedMinhasVendasRoute
+  AuthenticatedEstoqueLembretesRoute: typeof AuthenticatedEstoqueLembretesRoute
   AuthenticatedNotificacoesRoute: typeof AuthenticatedNotificacoesRoute
   AuthenticatedPerfilRoute: typeof AuthenticatedPerfilRoute
   AuthenticatedPublicacoesRoute: typeof AuthenticatedPublicacoesRoute
