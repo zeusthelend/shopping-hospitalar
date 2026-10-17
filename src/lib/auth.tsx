@@ -49,6 +49,7 @@ export function useMe() {
         .toLowerCase();
       const isStockLead = positionName.includes("encarregado") && positionName.includes("estoque");
       const isStockRole = positionName.includes("estoquista") || positionName.includes("estoque");
+      const isAdministrativeRole = positionName.includes("administrativo");
       return {
         profile,
         roles: r,
@@ -57,6 +58,7 @@ export function useMe() {
         isStockLead,
         isStockRole,
         canAccessStockTools: isStockRole || isStockLead,
+        canAccessAdministrativeTools: isAdministrativeRole,
         canRegisterDavForSeller: canManage || isStockRole,
         canViewAllSales: canManage || isStockLead,
       };
