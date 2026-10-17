@@ -1,10 +1,11 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { AlertTriangle, FilePlus2, Paperclip, Search, Trash2, TrendingUp, Trophy, CheckCircle2, Clock3, XCircle, Pencil } from "lucide-react";
+import { AlertTriangle, FilePlus2, Paperclip, Search, Trash2, TrendingUp, Trophy, CheckCircle2, Clock3, XCircle, Pencil, MessageCircle } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useMe } from "@/lib/auth";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { PageHeader, Empty } from "@/components/brand";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -76,7 +77,7 @@ function DavsPage() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("profiles")
-        .select("id,full_name")
+        .select("id,full_name,avatar_url")
         .eq("active", true)
         .eq("approved", true)
         .order("full_name");
@@ -364,13 +365,15 @@ function DavDialog({
   canManage,
   userId,
 }: {
-  sellers: Array<{ id: string; full_name: string }>;
+  sellers: Array<{ id: string; full_name: string; avatar_url?: string | null }>;
   canManage: boolean;
   userId: string | undefined;
 }) {
   const qc = useQueryClient();
+  const navigate = useNavigate();
   const [open, setOpen] = useState(false);
   const [busy, setBusy] = useState(false);
+  const [selectedSeller, setSelectedSeller] = useState("");
 
   async function save(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -381,7 +384,7 @@ function DavDialog({
       const rawNumber = String(fd.get("number")).replace(/\D/g, "");
       const number = `DAV:${rawNumber.padStart(5, "0")}`;
       const client = String(fd.get("client")).trim();
-      const seller = canManage ? String(fd.get("seller")) : userId;
+      const seller = canManage ? selectedSeller : userId;
       const due = String(fd.get("due_at"));
       if (!rawNumber || !client || !seller || !due)
         throw new Error("Preencha número, cliente, vendedor e vencimento.");
@@ -424,8 +427,29 @@ function DavDialog({
         if (attachmentError) throw attachmentError;
       }
       await qc.invalidateQueries({ queryKey: ["davs"] });
-      toast.success("DAV cadastrado.");
+      if (seller && seller !== userId) {
+        try {
+          const { data: conversationId, error: conversationError } = await supabase.rpc("create_chat_conversation", {
+            _kind: "direct", _name: "", _members: [seller],
+          });
+          if (conversationError) throw conversationError;
+          if (typeof conversationId !== "string" || !conversationId) throw new Error("Conversa não confirmada.");
+          const { data: message, error: messageError } = await supabase.from("chat_messages").insert({
+            conversation_id: conversationId,
+            sender_id: userId,
+            body: `Aviso de DAV: o DAV ${number.replace("DAV:", "")} do cliente ${client.slice(0, 180)} foi cadastrado na sua conta. Confira os detalhes na aba DAVs do Shopping Hospitalar.`,
+          }).select("id").single();
+          if (messageError) throw messageError;
+          if (!message?.id) throw new Error("O chat não confirmou o envio.");
+          toast.success("DAV cadastrado e aviso enviado no chat do vendedor.");
+        } catch {
+          toast.warning("DAV cadastrado, mas não foi possível enviar o aviso no chat. Abra o chat do vendedor para avisá-lo.");
+        }
+      } else {
+        toast.success("DAV cadastrado.");
+      }
       setOpen(false);
+      setSelectedSeller("");
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Erro ao cadastrar DAV.");
     } finally {
@@ -461,19 +485,39 @@ function DavDialog({
             <Input name="client" required maxLength={180} />
           </Field>
           {canManage && (
-            <Field label="Vendedor">
-              <Select name="seller" required>
-                <SelectTrigger>
-                  <SelectValue placeholder="Selecione" />
-                </SelectTrigger>
-                <SelectContent>
-                  {sellers.map((seller) => (
-                    <SelectItem key={seller.id} value={seller.id}>
-                      {seller.full_name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+            <Field label="Escolher vendedor — o DAV ficará na conta selecionada">
+              <input type="hidden" name="seller" value={selectedSeller} />
+              <div className="max-h-64 space-y-2 overflow-y-auto rounded-xl border p-2">
+                {sellers.map((seller) => {
+                  const selected = selectedSeller === seller.id;
+                  return (
+                    <div key={seller.id} className={`flex items-center gap-3 rounded-xl border p-3 transition-colors ${selected ? "border-primary bg-primary/5" : "border-transparent bg-muted/40"}`}>
+                      <Avatar className="h-11 w-11 shrink-0">
+                        <AvatarImage src={seller.avatar_url ?? undefined} alt={seller.full_name} />
+                        <AvatarFallback>{seller.full_name.split(/\\s+/).map((part) => part[0]).join("").slice(0, 2).toUpperCase()}</AvatarFallback>
+                      </Avatar>
+                      <button type="button" onClick={() => setSelectedSeller(seller.id)} className="min-w-0 flex-1 text-left" aria-pressed={selected}>
+                        <span className="block truncate text-sm font-semibold">{seller.full_name}</span>
+                        <span className="block text-xs text-muted-foreground">{selected ? "Selecionado para receber o DAV" : "Selecionar este vendedor"}</span>
+                      </button>
+                      <Button type="button" size="sm" variant="outline" onClick={async () => {
+                        if (!userId) return;
+                        try {
+                          const { data: conversationId, error } = await supabase.rpc("create_chat_conversation", { _kind: "direct", _name: "", _members: [seller.id] });
+                          if (error) throw error;
+                          if (typeof conversationId !== "string" || !conversationId) throw new Error("Conversa não confirmada.");
+                          await navigate({ to: "/chat/$conversationId", params: { conversationId } });
+                        } catch (error) {
+                          toast.error(error instanceof Error ? error.message : "Não foi possível abrir o chat do vendedor.");
+                        }
+                      }} aria-label={`Abrir chat de ${seller.full_name}`}>
+                        <MessageCircle className="mr-1 h-4 w-4" />Chat
+                      </Button>
+                    </div>
+                  );
+                })}
+              </div>
+              {!selectedSeller && <p className="text-xs text-muted-foreground">Selecione um vendedor antes de cadastrar.</p>}
             </Field>
           )}
           <Field label="Descrição">
