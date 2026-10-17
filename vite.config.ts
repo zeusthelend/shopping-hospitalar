@@ -18,17 +18,12 @@ type WorkerNitroConfig = {
 
 const cloudflareRuntimeConfig: WorkerNitroConfig = {
   cloudflare: {
-    // Enable Node.js compatibility so server-side process.env can read Worker bindings.
+    // Cloudflare remains the Worker runtime/hosting target; call media uses LiveKit only.
     nodeCompat: true,
-    // Include the generated Wrangler configuration in the Nitro output.
     deployConfig: true,
     wrangler: {
-      // Ensure Worker bindings and secrets are exposed through process.env at request time.
       compatibility_flags: ["nodejs_compat", "nodejs_compat_populate_process_env"],
-      vars: {
-        CLOUDFLARE_ACCOUNT_ID: "a693098997941e429f5fde5803935413",
-        CLOUDFLARE_REALTIMEKIT_APP_ID: "bf2a26c7-a083-4b2c-94fd-ed1c6ecc85a1",
-      },
+      vars: {},
     },
   },
 };
