@@ -27,6 +27,7 @@ function StockRemindersPage() {
   const userId = me?.profile?.id;
   const allowed = !!me?.canAccessStockTools;
   const [title, setTitle] = useState("");
+  const [noteType, setNoteType] = useState("Tarefa / lembrete");
   const [notes, setNotes] = useState("");
   const [dueAt, setDueAt] = useState("");
   const [saving, setSaving] = useState(false);
@@ -57,11 +58,11 @@ function StockRemindersPage() {
     if (!userId || !allowed) return;
     setSaving(true);
     const { error } = await supabase.from("stock_reminders").insert({
-      created_by: userId, title: title.trim(), notes: notes.trim() || null, due_at: new Date(dueAt).toISOString(),
+      created_by: userId, title: `${noteType}: ${title.trim()}`, notes: notes.trim() || null, due_at: new Date(dueAt).toISOString(),
     });
     setSaving(false);
     if (error) return toast.error("Não foi possível salvar. A tabela da agenda precisa estar disponível no banco.");
-    setTitle(""); setNotes(""); setDueAt("");
+    setTitle(""); setNoteType("Tarefa / lembrete"); setNotes(""); setDueAt("");
     await qc.invalidateQueries({ queryKey: ["stock-reminders", userId] });
     toast.success("Lembrete criado.");
   }
@@ -87,7 +88,8 @@ function StockRemindersPage() {
     <section className="mb-6 rounded-xl border bg-card p-4 shadow-card sm:p-6">
       <div className="mb-4 flex items-center gap-2"><Plus className="h-5 w-5 text-highlight" /><h2 className="font-semibold">Novo lembrete</h2></div>
       <form className="grid gap-4 md:grid-cols-2" onSubmit={createReminder}>
-        <div className="space-y-2 md:col-span-2"><Label htmlFor="stock-title">O que precisa ser feito?</Label><Input id="stock-title" value={title} onChange={(e) => setTitle(e.target.value)} maxLength={160} required placeholder="Ex.: conferir pedido, separar material..." /></div>
+        <div className="space-y-2"><Label htmlFor="stock-type">Tipo de anotação</Label><select id="stock-type" className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm" value={noteType} onChange={(e) => setNoteType(e.target.value)}><option>Tarefa / lembrete</option><option>Produto avariado</option><option>Produto vencido</option><option>Produto próximo do vencimento</option><option>Produto recebido e não conferido</option><option>Produto recebido e não lançado</option><option>Falta / divergência de estoque</option></select></div>
+        <div className="space-y-2"><Label htmlFor="stock-title">Produto ou tarefa</Label><Input id="stock-title" value={title} onChange={(e) => setTitle(e.target.value)} maxLength={160} required placeholder="Ex.: nome do produto, pedido ou procedimento..." /></div>
         <div className="space-y-2"><Label htmlFor="stock-due">Data e hora do alerta</Label><Input id="stock-due" type="datetime-local" value={dueAt} onChange={(e) => setDueAt(e.target.value)} required /></div>
         <div className="space-y-2"><Label htmlFor="stock-notes">Anotações / etapas</Label><Textarea id="stock-notes" value={notes} onChange={(e) => setNotes(e.target.value)} rows={3} placeholder="Detalhes, número do pedido, o que falta conferir..." /></div>
         <div className="md:col-span-2"><Button disabled={saving || !title.trim() || !dueAt}>{saving ? "Salvando..." : "Salvar lembrete"}</Button></div>
