@@ -251,6 +251,15 @@ async function registerAndroidPush(
       visibility: 1,
       vibration: true,
     }),
+    PushNotifications.createChannel({
+      id: "incoming_calls",
+      name: "Chamadas recebidas",
+      description: "Alertas de chamadas de áudio e vídeo recebidas",
+      importance: 5,
+      visibility: 1,
+      vibration: true,
+      sound: "default",
+    }),
   ]);
 
   let timeout: number | undefined;
