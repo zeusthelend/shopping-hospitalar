@@ -27,7 +27,6 @@ import { Route as AuthenticatedPerfilRouteImport } from './routes/_authenticated
 import { Route as AuthenticatedPublicacoesRouteImport } from './routes/_authenticated/publicacoes'
 import { Route as AuthenticatedReunioesRouteImport } from './routes/_authenticated/reunioes'
 import { Route as ApiLivekitSessionRouteImport } from './routes/api/livekit-session'
-import { Route as ApiRealtimekitSessionRouteImport } from './routes/api/realtimekit-session'
 import { Route as AuthenticatedChatConversationIdRouteImport } from './routes/_authenticated/chat.$conversationId'
 import { Route as ApiPublicDavPushRouteImport } from './routes/api/public/dav-push'
 import { Route as ApiPublicDavPushTickRouteImport } from './routes/api/public/dav-push-tick'
@@ -126,11 +125,6 @@ const ApiLivekitSessionRoute = ApiLivekitSessionRouteImport.update({
   path: '/api/livekit-session',
   getParentRoute: () => rootRouteImport,
 } as any)
-const ApiRealtimekitSessionRoute = ApiRealtimekitSessionRouteImport.update({
-  id: '/api/realtimekit-session',
-  path: '/api/realtimekit-session',
-  getParentRoute: () => rootRouteImport,
-} as any)
 const AuthenticatedChatConversationIdRoute =
   AuthenticatedChatConversationIdRouteImport.update({
     id: '/$conversationId',
@@ -166,7 +160,6 @@ export interface FileRoutesByFullPath {
   '/publicacoes': typeof AuthenticatedPublicacoesRoute
   '/reunioes': typeof AuthenticatedReunioesRoute
   '/api/livekit-session': typeof ApiLivekitSessionRoute
-  '/api/realtimekit-session': typeof ApiRealtimekitSessionRoute
   '/chat/$conversationId': typeof AuthenticatedChatConversationIdRoute
   '/api/public/dav-push': typeof ApiPublicDavPushRoute
   '/api/public/dav-push-tick': typeof ApiPublicDavPushTickRoute
@@ -239,7 +232,6 @@ export interface FileRouteTypes {
     | '/publicacoes'
     | '/reunioes'
     | '/api/livekit-session'
-    | '/api/realtimekit-session'
     | '/chat/$conversationId'
     | '/api/public/dav-push'
     | '/api/public/dav-push-tick'
@@ -298,7 +290,6 @@ export interface RootRouteChildren {
   AuthRoute: typeof AuthRoute
   ResetPasswordRoute: typeof ResetPasswordRoute
   ApiLivekitSessionRoute: typeof ApiLivekitSessionRoute
-  ApiRealtimekitSessionRoute: typeof ApiRealtimekitSessionRoute
   ApiPublicDavPushRoute: typeof ApiPublicDavPushRoute
   ApiPublicDavPushTickRoute: typeof ApiPublicDavPushTickRoute
 }
@@ -431,13 +422,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiLivekitSessionRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/api/realtimekit-session': {
-      id: '/api/realtimekit-session'
-      path: '/api/realtimekit-session'
-      fullPath: '/api/realtimekit-session'
-      preLoaderRoute: typeof ApiRealtimekitSessionRouteImport
-      parentRoute: typeof rootRouteImport
-    }
     '/_authenticated/chat/$conversationId': {
       id: '/_authenticated/chat/$conversationId'
       path: '/$conversationId'
@@ -514,7 +498,6 @@ const rootRouteChildren: RootRouteChildren = {
   AuthRoute: AuthRoute,
   ResetPasswordRoute: ResetPasswordRoute,
   ApiLivekitSessionRoute: ApiLivekitSessionRoute,
-  ApiRealtimekitSessionRoute: ApiRealtimekitSessionRoute,
   ApiPublicDavPushRoute: ApiPublicDavPushRoute,
   ApiPublicDavPushTickRoute: ApiPublicDavPushTickRoute,
 }
