@@ -165,8 +165,8 @@ export function ChatWorkspace({ conversationId }: { conversationId?: string | un
   const previousPresence = useRef<Map<string, boolean> | null>(null);
   useEffect(() => {
     if (!profiles.length || !me?.profile?.id) return;
-    const current = new Map(
-      profiles.map((profile) => [profile.id, livePresence(profile) === "online"]),
+    const current = new Map<string, boolean>(
+      profiles.map((profile) => [profile.id, livePresence(profile) === "online"] as const),
     );
     const previous = previousPresence.current;
     previousPresence.current = current;
