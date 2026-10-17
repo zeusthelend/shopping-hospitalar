@@ -47,6 +47,39 @@ export type Database = {
         }
         Relationships: []
       }
+      administrative_reminders: {
+        Row: {
+          completed_at: string | null
+          created_at: string
+          created_by: string
+          due_at: string
+          id: string
+          notes: string | null
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          completed_at?: string | null
+          created_at?: string
+          created_by: string
+          due_at: string
+          id?: string
+          notes?: string | null
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          completed_at?: string | null
+          created_at?: string
+          created_by?: string
+          due_at?: string
+          id?: string
+          notes?: string | null
+          title?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       access_pin_attempts: {
         Row: {
           attempts: number
