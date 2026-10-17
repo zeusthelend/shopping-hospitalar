@@ -48,11 +48,14 @@ export function useMe() {
         .replace(/[\u0300-\u036f]/g, "")
         .toLowerCase();
       const isStockLead = positionName.includes("encarregado") && positionName.includes("estoque");
+      const isStockRole = positionName.includes("estoquista") || positionName.includes("estoque");
       return {
         profile,
         roles: r,
         isAdmin: r.includes("admin"),
         canManage,
+        isStockLead,
+        canRegisterDavForSeller: canManage || isStockRole,
         canViewAllSales: canManage || isStockLead,
       };
     },
