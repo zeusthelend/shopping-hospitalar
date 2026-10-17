@@ -45,7 +45,7 @@ function AdministrativeRemindersPage() {
     if (!allowed || !("Notification" in window) || Notification.permission !== "granted") return;
     for (const item of reminders) {
       if (item.completed_at || new Date(item.due_at).getTime() > Date.now()) continue;
-      const key = `stock-reminder-alerted-${item.id}`;
+      const key = `administrative-reminder-alerted-${item.id}`;
       if (sessionStorage.getItem(key)) continue;
       new Notification("Lembrete Administrativo", { body: item.title, tag: item.id });
       sessionStorage.setItem(key, "1");
@@ -87,9 +87,9 @@ function AdministrativeRemindersPage() {
     <section className="mb-6 rounded-xl border bg-card p-4 shadow-card sm:p-6">
       <div className="mb-4 flex items-center gap-2"><Plus className="h-5 w-5 text-highlight" /><h2 className="font-semibold">Novo lembrete</h2></div>
       <form className="grid gap-4 md:grid-cols-2" onSubmit={createReminder}>
-        <div className="space-y-2 md:col-span-2"><Label htmlFor="stock-title">O que precisa ser feito?</Label><Input id="stock-title" value={title} onChange={(e) => setTitle(e.target.value)} maxLength={160} required placeholder="Ex.: Ex.: enviar relatório, conferir documentos..." /></div>
-        <div className="space-y-2"><Label htmlFor="stock-due">Data e hora do alerta</Label><Input id="stock-due" type="datetime-local" value={dueAt} onChange={(e) => setDueAt(e.target.value)} required /></div>
-        <div className="space-y-2"><Label htmlFor="stock-notes">Anotações / etapas</Label><Textarea id="stock-notes" value={notes} onChange={(e) => setNotes(e.target.value)} rows={3} placeholder="Detalhes, documentos necessários, etapas pendentes..." /></div>
+        <div className="space-y-2 md:col-span-2"><Label htmlFor="administrative-title">O que precisa ser feito?</Label><Input id="administrative-title" value={title} onChange={(e) => setTitle(e.target.value)} maxLength={160} required placeholder="Ex.: enviar relatório, conferir documentos..." /></div>
+        <div className="space-y-2"><Label htmlFor="administrative-due">Data e hora do alerta</Label><Input id="administrative-due" type="datetime-local" value={dueAt} onChange={(e) => setDueAt(e.target.value)} required /></div>
+        <div className="space-y-2"><Label htmlFor="administrative-notes">Anotações / etapas</Label><Textarea id="administrative-notes" value={notes} onChange={(e) => setNotes(e.target.value)} rows={3} placeholder="Detalhes, documentos necessários, etapas pendentes..." /></div>
         <div className="md:col-span-2"><Button disabled={saving || !title.trim() || !dueAt}>{saving ? "Salvando..." : "Salvar lembrete"}</Button></div>
       </form>
     </section>
