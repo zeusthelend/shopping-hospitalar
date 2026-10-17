@@ -1,4 +1,4 @@
-import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { createFileRoute } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { AlertTriangle, FilePlus2, Paperclip, Search, Trash2, TrendingUp, Trophy, CheckCircle2, Clock3, XCircle, Pencil, MessageCircle } from "lucide-react";
 import { useState } from "react";
@@ -371,7 +371,6 @@ function DavDialog({
   userId: string | undefined;
 }) {
   const qc = useQueryClient();
-  const navigate = useNavigate();
   const [open, setOpen] = useState(false);
   const [busy, setBusy] = useState(false);
   const [selectedSeller, setSelectedSeller] = useState("");
@@ -504,18 +503,30 @@ function DavDialog({
                         <span className="block truncate text-sm font-semibold">{seller.full_name}</span>
                         <span className="block text-xs text-muted-foreground">{selected ? "Selecionado para receber o DAV" : "Selecionar este vendedor"}</span>
                       </button>
-                      <Button type="button" size="sm" variant="outline" onClick={async () => {
+                      <Button type="button" size="sm" variant="outline" onClick={async (event) => {
                         if (!userId) return;
+                        const form = event.currentTarget.closest("form");
+                        const formData = form ? new FormData(form) : null;
+                        const rawNumber = String(formData?.get("number") ?? "").replace(/\\D/g, "");
+                        const clientName = String(formData?.get("client") ?? "").trim();
+                        if (!rawNumber || !clientName) { toast.info("Preencha o número do DAV e o cliente antes de enviar o aviso."); return; }
                         try {
                           const { data: conversationId, error } = await supabase.rpc("create_chat_conversation", { _kind: "direct", _name: "", _members: [seller.id] });
                           if (error) throw error;
                           if (typeof conversationId !== "string" || !conversationId) throw new Error("Conversa não confirmada.");
-                          await navigate({ to: "/chat/$conversationId", params: { conversationId } });
+                          const { data: message, error: messageError } = await supabase.from("chat_messages").insert({
+                            conversation_id: conversationId, sender_id: userId,
+                            body: `Aviso: estou preparando o cadastro do DAV ${rawNumber.padStart(5, "0")} do cliente ${clientName.slice(0, 180)} para sua conta. Enviarei a confirmação quando concluir.`,
+                          }).select("id").single();
+                          if (messageError) throw messageError;
+                          if (!message?.id) throw new Error("O chat não confirmou o envio.");
+                          void notifyChatMessage({ data: { messageId: message.id } }).catch(() => undefined);
+                          toast.success(`Aviso enviado no chat de ${seller.full_name}.`);
                         } catch (error) {
-                          toast.error(error instanceof Error ? error.message : "Não foi possível abrir o chat do vendedor.");
+                          toast.error(error instanceof Error ? error.message : "Não foi possível enviar o aviso pelo chat.");
                         }
-                      }} aria-label={`Abrir chat de ${seller.full_name}`}>
-                        <MessageCircle className="mr-1 h-4 w-4" />Chat
+                      }} aria-label={`Avisar ${seller.full_name} pelo chat`}>
+                        <MessageCircle className="mr-1 h-4 w-4" />Avisar
                       </Button>
                     </div>
                   );
