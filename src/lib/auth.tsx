@@ -57,8 +57,8 @@ export function useMe() {
         canManage,
         isStockLead,
         isStockRole,
-        canAccessStockTools: isStockRole || isStockLead,
-        canAccessAdministrativeTools: isAdministrativeRole,
+        canAccessStockTools: canManage || isStockRole || isStockLead,
+        canAccessAdministrativeTools: canManage || isAdministrativeRole,
         canRegisterDavForSeller: canManage || isStockRole,
         canViewAllSales: canManage || isStockLead,
       };
