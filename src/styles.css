@@ -462,3 +462,109 @@ select:focus-visible {
   }
 }
 
+/* Animated brand atmosphere — Shopping Hospitalar */
+@keyframes sh-brand-aura-drift {
+  0%, 100% { background-position: 0% 0%, 100% 100%, 50% 50%; transform: scale(1); }
+  50% { background-position: 100% 30%, 0% 70%, 52% 48%; transform: scale(1.035); }
+}
+@keyframes sh-brand-marquee {
+  from { transform: translate3d(0, 0, 0); }
+  to { transform: translate3d(-50%, 0, 0); }
+}
+@keyframes sh-brand-logo-float {
+  0%, 100% { transform: translate3d(0, 0, 0) rotate(-1deg) scale(1); }
+  50% { transform: translate3d(0, -10px, 0) rotate(1deg) scale(1.035); }
+}
+:root {
+  --background: oklch(0.955 0.018 274);
+}
+.dark {
+  --background: oklch(0.145 0.04 276);
+}
+html, body {
+  min-height: 100%;
+}
+body {
+  position: relative;
+  isolation: isolate;
+  overflow-x: clip;
+  background-color: var(--color-background);
+  background-image:
+    radial-gradient(ellipse at 12% 8%, color-mix(in oklch, var(--color-ring) 12%, transparent), transparent 42%),
+    radial-gradient(ellipse at 88% 78%, color-mix(in oklch, var(--color-highlight) 8%, transparent), transparent 40%),
+    linear-gradient(135deg, color-mix(in oklch, var(--color-background) 94%, var(--color-ring) 6%), var(--color-background));
+  background-size: 160% 160%, 160% 160%, 100% 100%;
+  background-attachment: fixed;
+}
+body::before {
+  content: "";
+  position: fixed;
+  z-index: -1;
+  pointer-events: none;
+  inset: -8%;
+  opacity: .12;
+  background-image:
+    radial-gradient(circle at 20% 30%, var(--color-ring) 0, transparent 28%),
+    radial-gradient(circle at 80% 68%, var(--color-highlight) 0, transparent 24%),
+    url("/__l5e/assets-v1/08c95e60-8b98-42bd-8f3b-64a144c6527e/shopping-hospitalar-logo.jpeg");
+  background-repeat: no-repeat;
+  background-position: 0% 0%, 100% 100%, 50% 50%;
+  background-size: 100% 100%, 100% 100%, clamp(180px, 31vw, 420px) auto;
+  filter: saturate(1.12);
+  animation: sh-brand-aura-drift 20s ease-in-out infinite alternate;
+  will-change: background-position, transform;
+}
+body::after {
+  content: "SHOPPING HOSPITALAR  •  SHOPPING HOSPITALAR  •  SHOPPING HOSPITALAR  •  SHOPPING HOSPITALAR  •  ";
+  position: fixed;
+  z-index: -1;
+  pointer-events: none;
+  left: 0;
+  bottom: 14%;
+  white-space: nowrap;
+  width: max-content;
+  font-family: var(--font-display);
+  font-size: clamp(2.2rem, 7vw, 7rem);
+  line-height: 1;
+  font-weight: 800;
+  letter-spacing: .09em;
+  color: transparent;
+  -webkit-text-stroke: 1px color-mix(in oklch, var(--color-ring) 24%, transparent);
+  opacity: .5;
+  animation: sh-brand-marquee 38s linear infinite;
+  will-change: transform;
+}
+.dark body::before { opacity: .2; }
+.dark body::after {
+  -webkit-text-stroke-color: color-mix(in oklch, var(--color-primary) 34%, transparent);
+  opacity: .48;
+}
+/* Keep the workspace airy but let the animated brand color show through. */
+main.flex-1 {
+  background: transparent;
+}
+header.sticky {
+  background-color: color-mix(in oklch, var(--color-background) 78%, transparent);
+  backdrop-filter: blur(18px) saturate(1.25);
+}
+@media (max-width: 767px) {
+  body::before {
+    opacity: .075;
+    background-size: 100% 100%, 100% 100%, 190px auto;
+  }
+  body::after {
+    bottom: 22%;
+    font-size: 2.1rem;
+    -webkit-text-stroke-width: .7px;
+    opacity: .34;
+    animation-duration: 46s;
+  }
+  .dark body::before { opacity: .13; }
+}
+@media (prefers-reduced-motion: reduce) {
+  body::before, body::after {
+    animation: none !important;
+    will-change: auto;
+  }
+}
+
