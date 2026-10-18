@@ -735,3 +735,27 @@ header.sticky {
     will-change: auto;
   }
 }
+
+
+/* Mobile fallback: rotate the gradient itself instead of relying on @property,
+   which is not consistently animated by every mobile browser/WebView. */
+@keyframes sh-neon-mobile-spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+@media (hover: none), (pointer: coarse) {
+  :where(button, [role="button"], a[role="button"], input[type="button"], input[type="submit"], input[type="reset"]):not(:disabled):not([aria-disabled="true"])::before {
+    animation: sh-neon-mobile-spin 2.8s linear infinite;
+    transform-origin: center;
+    will-change: transform;
+  }
+  :where(button, [role="button"], a[role="button"], input[type="button"], input[type="submit"], input[type="reset"]):not(:disabled):not([aria-disabled="true"]) {
+    -webkit-tap-highlight-color: transparent;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  :where(button, [role="button"], a[role="button"], input[type="button"], input[type="submit"], input[type="reset"])::before {
+    animation: none !important;
+    will-change: auto;
+  }
+}
