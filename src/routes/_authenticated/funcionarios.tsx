@@ -2,7 +2,7 @@ import { livePresence } from "@/components/brand";
 import { createFileRoute } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { useQuery } from "@tanstack/react-query";
-import { Bot, Download, MessageCircle, Search, Sparkles, UserPlus, UserRound } from "lucide-react";
+import { Bot, Download, MessageCircle, Search, Sparkles, UserPlus } from "lucide-react";
 import { useState } from "react";
 import { useNavigate } from "@tanstack/react-router";
 import { toast } from "sonner";
