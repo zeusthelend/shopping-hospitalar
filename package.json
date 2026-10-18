@@ -13,7 +13,8 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "android:sync": "cap sync android",
-    "android:apk": "cap sync android && cd android && ./gradlew assembleDebug"
+    "android:apk": "cap sync android && cd android && ./gradlew assembleDebug",
+    "start": "node .output/server/index.mjs"
   },
   "overrides": {
     "rolldown": "1.2.1"
