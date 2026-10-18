@@ -57,8 +57,10 @@ export function useMe() {
         canManage,
         isStockLead,
         isStockRole,
-        canAccessStockTools: canManage || isStockRole || isStockLead,
-        canAccessAdministrativeTools: canManage || isAdministrativeRole,
+        // Keep both agenda tabs visible to leadership even when an older account
+        // has the position set but is missing its matching user_roles entry.
+        canAccessStockTools: canManage || isStockRole || isStockLead || positionName.includes("administrador"),
+        canAccessAdministrativeTools: canManage || isAdministrativeRole || positionName.includes("administrador"),
         canRegisterDavForSeller: canManage || isStockRole,
         canViewAllSales: canManage || isStockLead,
       };
