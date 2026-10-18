@@ -687,3 +687,51 @@ header.sticky {
     animation: none !important;
   }
 }
+
+
+/* Continuous orbiting neon beam around buttons — visible on desktop and touch screens. */
+@property --sh-neon-angle {
+  syntax: "<angle>";
+  inherits: false;
+  initial-value: 0deg;
+}
+@keyframes sh-neon-orbit {
+  to { --sh-neon-angle: 360deg; }
+}
+:where(button, [role="button"], a[role="button"], input[type="button"], input[type="submit"], input[type="reset"]) {
+  --sh-neon-angle: 0deg;
+}
+:where(button, [role="button"], a[role="button"], input[type="button"], input[type="submit"], input[type="reset"]):not(:disabled):not([aria-disabled="true"])::before {
+  content: "";
+  position: absolute;
+  inset: -2px;
+  padding: 2px;
+  border-radius: inherit;
+  pointer-events: none;
+  z-index: 2;
+  background: conic-gradient(
+    from var(--sh-neon-angle),
+    transparent 0deg,
+    transparent 205deg,
+    #00eaff 250deg,
+    #7c3aed 285deg,
+    #00eaff 315deg,
+    transparent 360deg
+  );
+  -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  opacity: .95;
+  animation: sh-neon-orbit 3.2s linear infinite;
+  will-change: --sh-neon-angle;
+}
+:where(button, [role="button"], a[role="button"], input[type="button"], input[type="submit"], input[type="reset"]):not(:disabled):not([aria-disabled="true"]):active::before {
+  filter: brightness(1.5);
+  animation-duration: 1.1s;
+}
+@media (prefers-reduced-motion: reduce) {
+  :where(button, [role="button"], a[role="button"], input[type="button"], input[type="submit"], input[type="reset"])::before {
+    animation: none !important;
+    will-change: auto;
+  }
+}
