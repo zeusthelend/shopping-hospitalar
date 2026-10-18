@@ -68,8 +68,22 @@ function AuthPage() {
   }
 
   async function google() {
-    const r = await lovable.auth.signInWithOAuth("google", { redirect_uri: window.location.origin });
-    if (r.error) toast.error("Não foi possível entrar com Google.");
+    setBusy(true);
+    try {
+      // Return to the dedicated auth route so Supabase can restore the OAuth
+      // session there before the app redirects an authenticated user onward.
+      const redirectUri = new URL("/auth", window.location.origin).toString();
+      const result = await lovable.auth.signInWithOAuth("google", { redirect_uri: redirectUri });
+      if (result.error) {
+        toast.error("Não foi possível entrar com Google. Tente novamente.");
+        setBusy(false);
+      }
+      // On a successful redirect, leave the page alone; the OAuth broker returns
+      // to /auth and the AuthProvider restores the persisted Supabase session.
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Falha ao iniciar o login com Google.");
+      setBusy(false);
+    }
   }
 
   return (
@@ -130,7 +144,7 @@ function AuthPage() {
               <div className="my-5 flex items-center gap-3 text-xs text-muted-foreground">
                 <div className="h-px flex-1 bg-border" /> ou <div className="h-px flex-1 bg-border" />
               </div>
-              <Button variant="outline" className="h-11 w-full font-semibold" onClick={google}>
+              <Button variant="outline" className="h-11 w-full font-semibold" onClick={google} disabled={busy}>
                 ENTRAR COM GOOGLE
               </Button>
             </>
