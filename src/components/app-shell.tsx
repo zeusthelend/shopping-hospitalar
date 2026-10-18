@@ -60,9 +60,11 @@ function NavList({
   onNavigate?: (() => void) | undefined;
 }) {
   const { data: me } = useMe();
+  // Administrators must always see both reminder areas, even if a legacy
+  // role mapping has not populated the specialized capability flags yet.
   const visibleNav = NAV.filter((item) =>
-    (item.to !== "/estoque-lembretes" || me?.canAccessStockTools) &&
-    (item.to !== "/administrativo-lembretes" || me?.canAccessAdministrativeTools)
+    (item.to !== "/estoque-lembretes" || isAdmin || me?.canAccessStockTools) &&
+    (item.to !== "/administrativo-lembretes" || isAdmin || me?.canAccessAdministrativeTools)
   );
   const items = isAdmin
     ? [...visibleNav, { to: "/admin", label: "Administração", icon: Wrench } as const]
