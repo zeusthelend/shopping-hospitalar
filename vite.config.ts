@@ -6,6 +6,11 @@ import tsconfigPaths from "vite-tsconfig-paths";
 import { nitro } from "nitro/vite";
 
 export default defineConfig({
+  // The app currently ships some large vendor chunks; raise the warning threshold
+  // while preserving the warning for unusually large bundles.
+  build: {
+    chunkSizeWarningLimit: 1000,
+  },
   plugins: [
     tanstackStart({
       // Keep the app's SSR error wrapper.
