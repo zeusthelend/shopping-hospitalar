@@ -633,13 +633,11 @@ header.sticky {
       0 5px 16px -10px var(--color-ring);
   }
 }
-@media (prefers-reduced-motion: reduce) {
-  @media (max-width: 767px) {
-    body::before, body::after,
-    .rounded-xl.border.bg-card,
-    .rounded-2xl.border.bg-card,
-    [class~="shadow-card"] {
-      animation: none !important;
-    }
+@media (max-width: 767px) and (prefers-reduced-motion: reduce) {
+  body::before, body::after,
+  .rounded-xl.border.bg-card,
+  .rounded-2xl.border.bg-card,
+  [class~="shadow-card"] {
+    animation: none !important;
   }
 }
