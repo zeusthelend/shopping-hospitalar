@@ -759,3 +759,33 @@ header.sticky {
     will-change: auto;
   }
 }
+
+
+/* Strong mobile fallback: keep the neon visibly animated even on browsers
+   that cannot animate registered custom properties or masked gradients. */
+@keyframes sh-neon-mobile-pulse {
+  0%, 100% {
+    box-shadow: 0 0 0 1px rgba(0, 234, 255, .62),
+      0 0 7px rgba(0, 234, 255, .35),
+      0 0 13px rgba(124, 58, 237, .22);
+  }
+  50% {
+    box-shadow: 0 0 0 2px rgba(124, 58, 237, .9),
+      0 0 13px rgba(0, 234, 255, .78),
+      0 0 24px rgba(124, 58, 237, .58);
+  }
+}
+@media (hover: none), (pointer: coarse) {
+  :where(button, [role="button"], a[role="button"], input[type="button"], input[type="submit"], input[type="reset"]):not(:disabled):not([aria-disabled="true"]) {
+    animation: sh-neon-mobile-pulse 1.8s ease-in-out infinite;
+    -webkit-tap-highlight-color: transparent;
+  }
+  :where(button, [role="button"], a[role="button"], input[type="button"], input[type="submit"], input[type="reset"]):not(:disabled):not([aria-disabled="true"])::before {
+    animation: sh-neon-orbit 3.2s linear infinite, sh-neon-mobile-spin 2.8s linear infinite;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  :where(button, [role="button"], a[role="button"], input[type="button"], input[type="submit"], input[type="reset"]) {
+    animation: none !important;
+  }
+}
