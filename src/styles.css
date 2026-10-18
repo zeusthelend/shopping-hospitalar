@@ -568,3 +568,78 @@ header.sticky {
   }
 }
 
+
+
+/* Mobile visibility fix: keep the brand atmosphere and card motion visible on touch screens. */
+@keyframes sh-mobile-brand-breathe {
+  0%, 100% { filter: saturate(1); }
+  50% { filter: saturate(1.22); }
+}
+@keyframes sh-mobile-card-glow {
+  0%, 100% { box-shadow: 0 8px 22px -18px color-mix(in oklch, var(--color-ring) 30%, transparent); }
+  50% { box-shadow: 0 12px 28px -16px color-mix(in oklch, var(--color-ring) 48%, transparent); }
+}
+@media (max-width: 767px) {
+  body {
+    background-attachment: scroll;
+    background-size: 180% 180%, 180% 180%, 100% 100%;
+  }
+  body::before {
+    opacity: .14;
+    background-size: 100% 100%, 100% 100%, 210px auto;
+    animation: sh-brand-aura-drift 18s ease-in-out infinite;
+  }
+  body::after {
+    opacity: .46;
+    font-size: clamp(1.8rem, 8vw, 2.5rem);
+    animation-duration: 32s;
+  }
+  .dark body::before { opacity: .2; }
+  .dark body::after { opacity: .42; }
+
+  /* A subtle always-visible accent replaces desktop-only hover decoration. */
+  .rounded-xl.border.bg-card::before,
+  .rounded-2xl.border.bg-card::before,
+  [class~="shadow-card"]::before {
+    transform: scaleX(.72);
+    opacity: .72;
+  }
+  .rounded-xl.border.bg-card,
+  .rounded-2xl.border.bg-card,
+  [class~="shadow-card"] {
+    animation: sh-template-enter 420ms cubic-bezier(.2,.75,.25,1) both,
+      sh-mobile-card-glow 5.5s ease-in-out 700ms infinite;
+  }
+
+  /* Touch feedback is visible immediately on press, without relying on hover. */
+  :where(button, [role="button"], a[role="button"], input[type="button"], input[type="submit"], input[type="reset"]):not(:disabled):not([aria-disabled="true"]):active {
+    transform: scale(.93);
+    filter: brightness(1.12) saturate(1.16);
+    box-shadow: 0 0 0 4px color-mix(in oklch, var(--color-ring) 24%, transparent),
+      0 8px 20px -10px color-mix(in oklch, var(--color-ring) 50%, transparent);
+  }
+  :where(button, [role="button"], a[role="button"])[class*="bg-primary"]:not(:disabled):not([aria-disabled="true"]),
+  :where(button, [role="button"], a[role="button"])[data-variant="default"]:not(:disabled):not([aria-disabled="true"]) {
+    animation: sh-touch-pulse 3.2s ease-in-out infinite;
+  }
+  .rounded-xl.border.bg-card:active::after,
+  .rounded-2xl.border.bg-card:active::after,
+  [class~="shadow-card"]:active::after {
+    animation: sh-card-sheen-pass 700ms ease-out both;
+  }
+  [role="tab"][data-state="active"],
+  [data-state="active"][role="tab"] {
+    box-shadow: inset 0 -3px 0 var(--color-ring),
+      0 5px 16px -10px var(--color-ring);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  @media (max-width: 767px) {
+    body::before, body::after,
+    .rounded-xl.border.bg-card,
+    .rounded-2xl.border.bg-card,
+    [class~="shadow-card"] {
+      animation: none !important;
+    }
+  }
+}
