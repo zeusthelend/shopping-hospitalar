@@ -737,17 +737,30 @@ header.sticky {
 }
 
 
-/* Mobile fallback: rotate the gradient itself instead of relying on @property,
-   which is not consistently animated by every mobile browser/WebView. */
+/* Mobile fallback: animate the conic-gradient angle directly.
+   This avoids rotating the masked element, which can look stationary in some WebViews. */
 @keyframes sh-neon-mobile-spin {
-  from { transform: rotate(0deg); }
-  to { transform: rotate(360deg); }
+  from {
+    background-image: conic-gradient(
+      from 0deg,
+      transparent 0deg, transparent 205deg,
+      #00eaff 250deg, #7c3aed 285deg, #00eaff 315deg,
+      transparent 360deg
+    );
+  }
+  to {
+    background-image: conic-gradient(
+      from 360deg,
+      transparent 0deg, transparent 205deg,
+      #00eaff 250deg, #7c3aed 285deg, #00eaff 315deg,
+      transparent 360deg
+    );
+  }
 }
 @media (hover: none), (pointer: coarse) {
   :where(button, [role="button"], a[role="button"], input[type="button"], input[type="submit"], input[type="reset"]):not(:disabled):not([aria-disabled="true"])::before {
     animation: sh-neon-mobile-spin 2.8s linear infinite;
-    transform-origin: center;
-    will-change: transform;
+    will-change: background-image;
   }
   :where(button, [role="button"], a[role="button"], input[type="button"], input[type="submit"], input[type="reset"]):not(:disabled):not([aria-disabled="true"]) {
     -webkit-tap-highlight-color: transparent;
