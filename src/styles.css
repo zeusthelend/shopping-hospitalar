@@ -740,22 +740,8 @@ header.sticky {
 /* Mobile fallback: animate the conic-gradient angle directly.
    This avoids rotating the masked element, which can look stationary in some WebViews. */
 @keyframes sh-neon-mobile-spin {
-  from {
-    background-image: conic-gradient(
-      from 0deg,
-      transparent 0deg, transparent 205deg,
-      #00eaff 250deg, #7c3aed 285deg, #00eaff 315deg,
-      transparent 360deg
-    );
-  }
-  to {
-    background-image: conic-gradient(
-      from 360deg,
-      transparent 0deg, transparent 205deg,
-      #00eaff 250deg, #7c3aed 285deg, #00eaff 315deg,
-      transparent 360deg
-    );
-  }
+  from { transform: rotate(0turn); }
+  to { transform: rotate(1turn); }
 }
 @media (hover: none), (pointer: coarse) {
   :where(button, [role="button"], a[role="button"], input[type="button"], input[type="submit"], input[type="reset"]):not(:disabled):not([aria-disabled="true"])::before {
