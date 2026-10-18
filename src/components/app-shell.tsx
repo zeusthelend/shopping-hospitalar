@@ -216,6 +216,39 @@ export function AppShell({ children }: { children: ReactNode }) {
     return () => window.clearInterval(timer);
   }, [me?.profile?.id, checkOverduePushes]);
 
+  useEffect(() => {
+    if (!me?.profile?.id || !me.profile.approved || !me.profile.active) return;
+    const checkTeamReminders = async () => {
+      if (!("Notification" in window) || Notification.permission !== "granted") return;
+      const { data, error } = await supabase
+        .from("team_reminders")
+        .select("id,title,body,due_at,completed_at")
+        .is("completed_at", null)
+        .lte("due_at", new Date().toISOString())
+        .order("due_at", { ascending: true });
+      if (error) {
+        console.error("Team reminder notification check failed", error);
+        return;
+      }
+      for (const item of data ?? []) {
+        const key = `team-reminder-notified-${me.profile.id}-${item.id}`;
+        if (sessionStorage.getItem(key)) continue;
+        try {
+          new Notification("Lembrete do Shopping Hospitalar", {
+            body: item.body ? `${item.title} — ${item.body}` : item.title,
+            tag: item.id,
+          });
+          sessionStorage.setItem(key, "1");
+        } catch (error) {
+          console.error("Could not show team reminder notification", error);
+        }
+      }
+    };
+    void checkTeamReminders();
+    const timer = window.setInterval(() => void checkTeamReminders(), 30_000);
+    return () => window.clearInterval(timer);
+  }, [me?.profile?.active, me?.profile?.approved, me?.profile?.id]);
+
   function toggleTheme() {
     const d = !dark;
     setDark(d);
