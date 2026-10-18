@@ -17,10 +17,19 @@ function getSupabaseConfig(): SupabaseConfig | null {
   const apiKey = process.env["SUPABASE_PUBLISHABLE_KEY"]?.trim() || process.env["VITE_SUPABASE_PUBLISHABLE_KEY"]?.trim() || process.env["SUPABASE_ANON_KEY"]?.trim() || process.env["VITE_SUPABASE_ANON_KEY"]?.trim() || import.meta.env["VITE_SUPABASE_PUBLISHABLE_KEY"]?.trim();
   return url && apiKey ? { url: url.replace(/\/+$/, ""), apiKey } : null;
 }
+function cleanSecret(value: string | undefined) {
+  const trimmed = value?.trim();
+  if (!trimmed) return undefined;
+  // Secret managers usually store raw values, but remove accidental wrapping quotes if pasted.
+  if ((trimmed.startsWith('"') && trimmed.endsWith('"')) || (trimmed.startsWith("'") && trimmed.endsWith("'"))) {
+    return trimmed.slice(1, -1).trim() || undefined;
+  }
+  return trimmed;
+}
 function getLiveKitConfig() {
-  const url = process.env["LIVEKIT_URL"]?.trim();
-  const apiKey = process.env["LIVEKIT_API_KEY"]?.trim();
-  const apiSecret = process.env["LIVEKIT_API_SECRET"]?.trim();
+  const url = cleanSecret(process.env["LIVEKIT_URL"]);
+  const apiKey = cleanSecret(process.env["LIVEKIT_API_KEY"]);
+  const apiSecret = cleanSecret(process.env["LIVEKIT_API_SECRET"]);
   if (!url || !apiKey || !apiSecret || !/^(https?|wss?):\/\//i.test(url)) return null;
   return { url: url.replace(/^http:/i, "ws:").replace(/^https:/i, "wss:").replace(/\/+$/, ""), apiKey, apiSecret };
 }
@@ -63,8 +72,10 @@ function b64url(value: string | Uint8Array) {
 async function makeToken(config: { apiKey: string; apiSecret: string }, identity: string, name: string, roomName: string) {
   const now = Math.floor(Date.now() / 1000);
   const header = b64url(JSON.stringify({ alg: "HS256", typ: "JWT" }));
+  // Match LiveKit's documented/server-SDK claim shape: no extra iat claim,
+  // nbf starts now, and the token is short-lived to avoid stale credentials.
   const payload = b64url(JSON.stringify({
-    iss: config.apiKey, sub: identity, name, nbf: now - 5, iat: now, exp: now + 6 * 60 * 60,
+    iss: config.apiKey, sub: identity, name, nbf: now, exp: now + 60 * 60,
     video: { roomJoin: true, room: roomName, canPublish: true, canSubscribe: true, canPublishData: true },
   }));
   const unsigned = header + "." + payload;
