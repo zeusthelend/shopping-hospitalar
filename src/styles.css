@@ -797,4 +797,8 @@ header.sticky {
     outline: 2px solid rgba(0, 234, 255, .8);
     box-shadow: 0 0 0 1px rgba(0, 234, 255, .7), 0 0 12px rgba(0, 234, 255, .45);
   }
+  :where(button, [role="button"], a[role="button"], input[type="button"], input[type="submit"], input[type="reset"])::before {
+    animation: none !important;
+    will-change: auto;
+  }
 }
