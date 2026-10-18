@@ -641,3 +641,49 @@ header.sticky {
     animation: none !important;
   }
 }
+
+
+/* Neon button feedback: a luminous edge and a short ripple on press.
+   Uses only CSS transforms/opacity/shadows and works with mouse and touch. */
+@keyframes sh-neon-ripple {
+  0% { opacity: .78; transform: scale(.86); box-shadow: 0 0 0 0 color-mix(in oklch, var(--color-ring) 48%, transparent); }
+  100% { opacity: 0; transform: scale(1.12); box-shadow: 0 0 0 7px color-mix(in oklch, var(--color-ring) 0%, transparent); }
+}
+@keyframes sh-neon-breathe {
+  0%, 100% { box-shadow: 0 0 0 1px color-mix(in oklch, var(--color-ring) 24%, transparent), 0 0 10px -7px var(--color-ring); }
+  50% { box-shadow: 0 0 0 1px color-mix(in oklch, var(--color-ring) 48%, transparent), 0 0 18px -6px color-mix(in oklch, var(--color-ring) 62%, transparent); }
+}
+:where(button, [role="button"], a[role="button"]) {
+  position: relative;
+  isolation: isolate;
+}
+:where(button, [role="button"], a[role="button"])::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border: 1px solid color-mix(in oklch, var(--color-ring) 68%, transparent);
+  border-radius: inherit;
+  opacity: 0;
+  pointer-events: none;
+  z-index: 1;
+}
+:where(button, [role="button"], a[role="button"]):not(:disabled):not([aria-disabled="true"]):active::after {
+  animation: sh-neon-ripple 460ms ease-out;
+}
+@media (hover: hover) and (pointer: fine) {
+  :where(button, [role="button"], a[role="button"]):not(:disabled):not([aria-disabled="true"]):hover {
+    animation: sh-neon-breathe 1.5s ease-in-out infinite;
+    box-shadow: 0 0 0 1px color-mix(in oklch, var(--color-ring) 42%, transparent),
+      0 0 18px -5px color-mix(in oklch, var(--color-ring) 62%, transparent),
+      0 8px 22px -12px currentColor;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  :where(button, [role="button"], a[role="button"])::after {
+    animation: none !important;
+    transition: none !important;
+  }
+  :where(button, [role="button"], a[role="button"]):not(:disabled):not([aria-disabled="true"]):hover {
+    animation: none !important;
+  }
+}
