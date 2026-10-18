@@ -736,18 +736,9 @@ header.sticky {
   }
 }
 
-
-/* Mobile fallback: animate the conic-gradient angle directly.
-   This avoids rotating the masked element, which can look stationary in some WebViews. */
-@keyframes sh-neon-mobile-spin {
-  from { transform: rotate(0turn); }
-  to { transform: rotate(1turn); }
-}
+/* Touch devices use the same registered-angle animation as desktop.
+   Avoid overriding it with transform/background-image animations, which can appear static in mobile WebViews. */
 @media (hover: none), (pointer: coarse) {
-  :where(button, [role="button"], a[role="button"], input[type="button"], input[type="submit"], input[type="reset"]):not(:disabled):not([aria-disabled="true"])::before {
-    animation: sh-neon-mobile-spin 2.8s linear infinite;
-    will-change: background-image;
-  }
   :where(button, [role="button"], a[role="button"], input[type="button"], input[type="submit"], input[type="reset"]):not(:disabled):not([aria-disabled="true"]) {
     -webkit-tap-highlight-color: transparent;
   }
