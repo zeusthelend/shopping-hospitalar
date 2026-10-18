@@ -325,8 +325,8 @@ export function AppShell({ children }: { children: ReactNode }) {
           {[
             NAV[0],
             NAV[2],
-            ...(me?.canAccessStockTools ? [NAV[7]] : []),
-            ...(me?.canAccessAdministrativeTools ? [NAV[8]] : []),
+            ...(me?.isAdmin || me?.roles.includes("gerente") || me?.canAccessStockTools ? [NAV[7]] : []),
+            ...(me?.isAdmin || me?.roles.includes("gerente") || me?.canAccessAdministrativeTools ? [NAV[8]] : []),
             NAV[4],
             NAV[11],
           ].map((i) => (
