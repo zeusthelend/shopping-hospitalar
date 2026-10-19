@@ -13,10 +13,8 @@ export default defineConfig({
     tanstackStart({
       server: { entry: "server" },
     }),
-    // Build a standard Node.js server for compatible Hostinger Node.js hosting.
-    nitro({
-      preset: "node-server",
-    }),
+    // Let Nitro detect the deployment platform so Vercel gets its compatible output.
+    nitro(),
     react(),
     tailwindcss(),
     tsconfigPaths(),
