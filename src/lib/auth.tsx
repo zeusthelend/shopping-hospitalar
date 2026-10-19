@@ -14,12 +14,38 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
   useEffect(() => {
-    const { data } = supabase.auth.onAuthStateChange((_e, s) => setSession(s));
-    supabase.auth.getSession().then(({ data }) => {
-      setSession(data.session);
+    let active = true;
+    // OAuth may complete while getSession() is still resolving. Do not let
+    // its initial result overwrite a newer SIGNED_IN / SIGNED_OUT event.
+    let receivedAuthEvent = false;
+
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((_event, nextSession) => {
+      receivedAuthEvent = true;
+      if (!active) return;
+      setSession(nextSession);
       setLoading(false);
     });
-    return () => data.subscription.unsubscribe();
+
+    supabase.auth
+      .getSession()
+      .then(({ data, error }) => {
+        if (!active || receivedAuthEvent) return;
+        if (error) console.error("[Auth] Failed to restore session:", error);
+        setSession(data.session);
+        setLoading(false);
+      })
+      .catch((error: unknown) => {
+        if (!active || receivedAuthEvent) return;
+        console.error("[Auth] Failed to restore session:", error);
+        setLoading(false);
+      });
+
+    return () => {
+      active = false;
+      subscription.unsubscribe();
+    };
   }, []);
   return <Ctx.Provider value={{ session, loading }}>{children}</Ctx.Provider>;
 }
