@@ -14,16 +14,16 @@ import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as ResetPasswordRouteImport } from './routes/reset-password'
 import { Route as AuthenticatedAdminRouteImport } from './routes/_authenticated/admin'
+import { Route as AuthenticatedAdministrativoLembretesRouteImport } from './routes/_authenticated/administrativo-lembretes'
 import { Route as AuthenticatedAvisosRouteImport } from './routes/_authenticated/avisos'
 import { Route as AuthenticatedChatRouteImport } from './routes/_authenticated/chat'
 import { Route as AuthenticatedConfiguracoesRouteImport } from './routes/_authenticated/configuracoes'
 import { Route as AuthenticatedDashboardRouteImport } from './routes/_authenticated/dashboard'
 import { Route as AuthenticatedDavsRouteImport } from './routes/_authenticated/davs'
 import { Route as AuthenticatedDocumentosRouteImport } from './routes/_authenticated/documentos'
+import { Route as AuthenticatedEstoqueLembretesRouteImport } from './routes/_authenticated/estoque-lembretes'
 import { Route as AuthenticatedFuncionariosRouteImport } from './routes/_authenticated/funcionarios'
 import { Route as AuthenticatedMinhasVendasRouteImport } from './routes/_authenticated/minhas-vendas'
-import { Route as AuthenticatedEstoqueLembretesRouteImport } from './routes/_authenticated/estoque-lembretes'
-import { Route as AuthenticatedAdministrativoLembretesRouteImport } from './routes/_authenticated/administrativo-lembretes'
 import { Route as AuthenticatedNotificacoesRouteImport } from './routes/_authenticated/notificacoes'
 import { Route as AuthenticatedPerfilRouteImport } from './routes/_authenticated/perfil'
 import { Route as AuthenticatedPublicacoesRouteImport } from './routes/_authenticated/publicacoes'
@@ -57,6 +57,12 @@ const AuthenticatedAdminRoute = AuthenticatedAdminRouteImport.update({
   path: '/admin',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const AuthenticatedAdministrativoLembretesRoute =
+  AuthenticatedAdministrativoLembretesRouteImport.update({
+    id: '/administrativo-lembretes',
+    path: '/administrativo-lembretes',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
 const AuthenticatedAvisosRoute = AuthenticatedAvisosRouteImport.update({
   id: '/avisos',
   path: '/avisos',
@@ -88,6 +94,12 @@ const AuthenticatedDocumentosRoute = AuthenticatedDocumentosRouteImport.update({
   path: '/documentos',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const AuthenticatedEstoqueLembretesRoute =
+  AuthenticatedEstoqueLembretesRouteImport.update({
+    id: '/estoque-lembretes',
+    path: '/estoque-lembretes',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
 const AuthenticatedFuncionariosRoute =
   AuthenticatedFuncionariosRouteImport.update({
     id: '/funcionarios',
@@ -100,16 +112,6 @@ const AuthenticatedMinhasVendasRoute =
     path: '/minhas-vendas',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
-const AuthenticatedEstoqueLembretesRoute = AuthenticatedEstoqueLembretesRouteImport.update({
-  id: '/estoque-lembretes',
-  path: '/estoque-lembretes',
-  getParentRoute: () => AuthenticatedRouteRoute,
-} as any)
-const AuthenticatedAdministrativoLembretesRoute = AuthenticatedAdministrativoLembretesRouteImport.update({
-  id: '/administrativo-lembretes',
-  path: '/administrativo-lembretes',
-  getParentRoute: () => AuthenticatedRouteRoute,
-} as any)
 const AuthenticatedNotificacoesRoute =
   AuthenticatedNotificacoesRouteImport.update({
     id: '/notificacoes',
@@ -159,16 +161,16 @@ export interface FileRoutesByFullPath {
   '/auth': typeof AuthRoute
   '/reset-password': typeof ResetPasswordRoute
   '/admin': typeof AuthenticatedAdminRoute
+  '/administrativo-lembretes': typeof AuthenticatedAdministrativoLembretesRoute
   '/avisos': typeof AuthenticatedAvisosRoute
   '/chat': typeof AuthenticatedChatRouteWithChildren
   '/configuracoes': typeof AuthenticatedConfiguracoesRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
   '/davs': typeof AuthenticatedDavsRoute
   '/documentos': typeof AuthenticatedDocumentosRoute
+  '/estoque-lembretes': typeof AuthenticatedEstoqueLembretesRoute
   '/funcionarios': typeof AuthenticatedFuncionariosRoute
   '/minhas-vendas': typeof AuthenticatedMinhasVendasRoute
-  '/estoque-lembretes': typeof AuthenticatedEstoqueLembretesRoute
-  '/administrativo-lembretes': typeof AuthenticatedAdministrativoLembretesRoute
   '/notificacoes': typeof AuthenticatedNotificacoesRoute
   '/perfil': typeof AuthenticatedPerfilRoute
   '/publicacoes': typeof AuthenticatedPublicacoesRoute
@@ -183,16 +185,16 @@ export interface FileRoutesByTo {
   '/auth': typeof AuthRoute
   '/reset-password': typeof ResetPasswordRoute
   '/admin': typeof AuthenticatedAdminRoute
+  '/administrativo-lembretes': typeof AuthenticatedAdministrativoLembretesRoute
   '/avisos': typeof AuthenticatedAvisosRoute
   '/chat': typeof AuthenticatedChatRouteWithChildren
   '/configuracoes': typeof AuthenticatedConfiguracoesRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
   '/davs': typeof AuthenticatedDavsRoute
   '/documentos': typeof AuthenticatedDocumentosRoute
+  '/estoque-lembretes': typeof AuthenticatedEstoqueLembretesRoute
   '/funcionarios': typeof AuthenticatedFuncionariosRoute
   '/minhas-vendas': typeof AuthenticatedMinhasVendasRoute
-  '/estoque-lembretes': typeof AuthenticatedEstoqueLembretesRoute
-  '/administrativo-lembretes': typeof AuthenticatedAdministrativoLembretesRoute
   '/notificacoes': typeof AuthenticatedNotificacoesRoute
   '/perfil': typeof AuthenticatedPerfilRoute
   '/publicacoes': typeof AuthenticatedPublicacoesRoute
@@ -209,16 +211,16 @@ export interface FileRoutesById {
   '/auth': typeof AuthRoute
   '/reset-password': typeof ResetPasswordRoute
   '/_authenticated/admin': typeof AuthenticatedAdminRoute
+  '/_authenticated/administrativo-lembretes': typeof AuthenticatedAdministrativoLembretesRoute
   '/_authenticated/avisos': typeof AuthenticatedAvisosRoute
   '/_authenticated/chat': typeof AuthenticatedChatRouteWithChildren
   '/_authenticated/configuracoes': typeof AuthenticatedConfiguracoesRoute
   '/_authenticated/dashboard': typeof AuthenticatedDashboardRoute
   '/_authenticated/davs': typeof AuthenticatedDavsRoute
   '/_authenticated/documentos': typeof AuthenticatedDocumentosRoute
+  '/_authenticated/estoque-lembretes': typeof AuthenticatedEstoqueLembretesRoute
   '/_authenticated/funcionarios': typeof AuthenticatedFuncionariosRoute
   '/_authenticated/minhas-vendas': typeof AuthenticatedMinhasVendasRoute
-  '/_authenticated/estoque-lembretes': typeof AuthenticatedEstoqueLembretesRoute
-  '/_authenticated/administrativo-lembretes': typeof AuthenticatedAdministrativoLembretesRoute
   '/_authenticated/notificacoes': typeof AuthenticatedNotificacoesRoute
   '/_authenticated/perfil': typeof AuthenticatedPerfilRoute
   '/_authenticated/publicacoes': typeof AuthenticatedPublicacoesRoute
@@ -235,16 +237,16 @@ export interface FileRouteTypes {
     | '/auth'
     | '/reset-password'
     | '/admin'
+    | '/administrativo-lembretes'
     | '/avisos'
     | '/chat'
     | '/configuracoes'
     | '/dashboard'
     | '/davs'
     | '/documentos'
+    | '/estoque-lembretes'
     | '/funcionarios'
     | '/minhas-vendas'
-    | '/estoque-lembretes'
-    | '/administrativo-lembretes'
     | '/notificacoes'
     | '/perfil'
     | '/publicacoes'
@@ -259,12 +261,14 @@ export interface FileRouteTypes {
     | '/auth'
     | '/reset-password'
     | '/admin'
+    | '/administrativo-lembretes'
     | '/avisos'
     | '/chat'
     | '/configuracoes'
     | '/dashboard'
     | '/davs'
     | '/documentos'
+    | '/estoque-lembretes'
     | '/funcionarios'
     | '/minhas-vendas'
     | '/notificacoes'
@@ -282,16 +286,16 @@ export interface FileRouteTypes {
     | '/auth'
     | '/reset-password'
     | '/_authenticated/admin'
+    | '/_authenticated/administrativo-lembretes'
     | '/_authenticated/avisos'
     | '/_authenticated/chat'
     | '/_authenticated/configuracoes'
     | '/_authenticated/dashboard'
     | '/_authenticated/davs'
     | '/_authenticated/documentos'
+    | '/_authenticated/estoque-lembretes'
     | '/_authenticated/funcionarios'
     | '/_authenticated/minhas-vendas'
-    | '/_authenticated/estoque-lembretes'
-    | '/_authenticated/administrativo-lembretes'
     | '/_authenticated/notificacoes'
     | '/_authenticated/perfil'
     | '/_authenticated/publicacoes'
@@ -349,6 +353,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedAdminRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/administrativo-lembretes': {
+      id: '/_authenticated/administrativo-lembretes'
+      path: '/administrativo-lembretes'
+      fullPath: '/administrativo-lembretes'
+      preLoaderRoute: typeof AuthenticatedAdministrativoLembretesRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/avisos': {
       id: '/_authenticated/avisos'
       path: '/avisos'
@@ -391,6 +402,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedDocumentosRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/estoque-lembretes': {
+      id: '/_authenticated/estoque-lembretes'
+      path: '/estoque-lembretes'
+      fullPath: '/estoque-lembretes'
+      preLoaderRoute: typeof AuthenticatedEstoqueLembretesRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/funcionarios': {
       id: '/_authenticated/funcionarios'
       path: '/funcionarios'
@@ -403,13 +421,6 @@ declare module '@tanstack/react-router' {
       path: '/minhas-vendas'
       fullPath: '/minhas-vendas'
       preLoaderRoute: typeof AuthenticatedMinhasVendasRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
-    }
-    '/_authenticated/administrativo-lembretes': {
-      id: '/_authenticated/administrativo-lembretes'
-      path: '/administrativo-lembretes'
-      fullPath: '/administrativo-lembretes'
-      preLoaderRoute: typeof AuthenticatedAdministrativoLembretesRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/notificacoes': {
@@ -484,16 +495,16 @@ const AuthenticatedChatRouteWithChildren =
 
 interface AuthenticatedRouteRouteChildren {
   AuthenticatedAdminRoute: typeof AuthenticatedAdminRoute
+  AuthenticatedAdministrativoLembretesRoute: typeof AuthenticatedAdministrativoLembretesRoute
   AuthenticatedAvisosRoute: typeof AuthenticatedAvisosRoute
   AuthenticatedChatRoute: typeof AuthenticatedChatRouteWithChildren
   AuthenticatedConfiguracoesRoute: typeof AuthenticatedConfiguracoesRoute
   AuthenticatedDashboardRoute: typeof AuthenticatedDashboardRoute
   AuthenticatedDavsRoute: typeof AuthenticatedDavsRoute
   AuthenticatedDocumentosRoute: typeof AuthenticatedDocumentosRoute
+  AuthenticatedEstoqueLembretesRoute: typeof AuthenticatedEstoqueLembretesRoute
   AuthenticatedFuncionariosRoute: typeof AuthenticatedFuncionariosRoute
   AuthenticatedMinhasVendasRoute: typeof AuthenticatedMinhasVendasRoute
-  AuthenticatedEstoqueLembretesRoute: typeof AuthenticatedEstoqueLembretesRoute
-  AuthenticatedAdministrativoLembretesRoute: typeof AuthenticatedAdministrativoLembretesRoute
   AuthenticatedNotificacoesRoute: typeof AuthenticatedNotificacoesRoute
   AuthenticatedPerfilRoute: typeof AuthenticatedPerfilRoute
   AuthenticatedPublicacoesRoute: typeof AuthenticatedPublicacoesRoute
@@ -502,16 +513,17 @@ interface AuthenticatedRouteRouteChildren {
 
 const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedAdminRoute: AuthenticatedAdminRoute,
+  AuthenticatedAdministrativoLembretesRoute:
+    AuthenticatedAdministrativoLembretesRoute,
   AuthenticatedAvisosRoute: AuthenticatedAvisosRoute,
   AuthenticatedChatRoute: AuthenticatedChatRouteWithChildren,
   AuthenticatedConfiguracoesRoute: AuthenticatedConfiguracoesRoute,
   AuthenticatedDashboardRoute: AuthenticatedDashboardRoute,
   AuthenticatedDavsRoute: AuthenticatedDavsRoute,
   AuthenticatedDocumentosRoute: AuthenticatedDocumentosRoute,
+  AuthenticatedEstoqueLembretesRoute: AuthenticatedEstoqueLembretesRoute,
   AuthenticatedFuncionariosRoute: AuthenticatedFuncionariosRoute,
   AuthenticatedMinhasVendasRoute: AuthenticatedMinhasVendasRoute,
-  AuthenticatedEstoqueLembretesRoute: AuthenticatedEstoqueLembretesRoute,
-  AuthenticatedAdministrativoLembretesRoute: AuthenticatedAdministrativoLembretesRoute,
   AuthenticatedNotificacoesRoute: AuthenticatedNotificacoesRoute,
   AuthenticatedPerfilRoute: AuthenticatedPerfilRoute,
   AuthenticatedPublicacoesRoute: AuthenticatedPublicacoesRoute,
