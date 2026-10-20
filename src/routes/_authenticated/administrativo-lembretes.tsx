@@ -25,7 +25,7 @@ function AdministrativeRemindersPage() {
   const { data: me } = useMe();
   const qc = useQueryClient();
   const userId = me?.profile?.id;
-  const allowed = !!me?.canAccessAdministrativeTools;
+  const allowed = !!me?.isAdmin || !!me?.roles.includes("gerente") || !!me?.canAccessAdministrativeTools;
   const [title, setTitle] = useState("");
   const [notes, setNotes] = useState("");
   const [dueAt, setDueAt] = useState("");
