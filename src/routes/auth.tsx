@@ -2,7 +2,6 @@ import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
-import { lovable } from "@/integrations/lovable";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -70,16 +69,14 @@ function AuthPage() {
   async function google() {
     setBusy(true);
     try {
-      // Return to the dedicated auth route so Supabase can restore the OAuth
-      // session there before the app redirects an authenticated user onward.
-      const redirectUri = new URL("/auth", window.location.origin).toString();
-      const result = await lovable.auth.signInWithOAuth("google", { redirect_uri: redirectUri });
-      if (result.error) {
-        toast.error("Não foi possível entrar com Google. Tente novamente.");
-        setBusy(false);
-      }
-      // On a successful redirect, leave the page alone; the OAuth broker returns
-      // to /auth and the AuthProvider restores the persisted Supabase session.
+      // Use Supabase OAuth directly; no Lovable Cloud auth broker.
+      const redirectTo = new URL("/auth", window.location.origin).toString();
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider: "google",
+        options: { redirectTo },
+      });
+      if (error) throw error;
+      // Supabase redirects to Google and returns to /auth with the session.
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Falha ao iniciar o login com Google.");
       setBusy(false);
