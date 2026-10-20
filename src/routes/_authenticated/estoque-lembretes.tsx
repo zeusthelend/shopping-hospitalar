@@ -25,7 +25,7 @@ function StockRemindersPage() {
   const { data: me } = useMe();
   const qc = useQueryClient();
   const userId = me?.profile?.id;
-  const allowed = !!me?.canAccessStockTools;
+  const allowed = !!me?.isAdmin || !!me?.roles.includes("gerente") || !!me?.canAccessStockTools;
   const [title, setTitle] = useState("");
   const [noteType, setNoteType] = useState("Tarefa / lembrete");
   const [notes, setNotes] = useState("");
