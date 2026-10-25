@@ -1221,7 +1221,22 @@ function MessageItem({
               <p className="truncate opacity-80">{reply.body}</p>
             </div>
           )}
-          {message.body?.startsWith("GIF:https://") && !message.deleted_at ? (() => { const url = message.body.slice(4).trim(); const tenorId = url.match(/^https:\/\/(?:www\.)?tenor\.com\/(?:view\/[^/?#]*-)?(\d+)(?:[/?#]|$)/i)?.[1]; return tenorId ? <iframe src={`https://tenor.com/embed/${tenorId}`} title="GIF enviado no chat" loading="lazy" allowFullScreen className="h-64 w-full max-w-sm rounded-lg border-0" /> : <a href={url} target="_blank" rel="noreferrer" className="block"><img src={url} alt="GIF enviado no chat" loading="lazy" className="max-h-72 max-w-full rounded-lg object-contain" /></a>; })() : <p className={cn("whitespace-pre-wrap break-words text-sm", message.deleted_at && "italic opacity-70")}>{message.body}</p>}
+          {message.body?.startsWith("GIF:https://") && !message.deleted_at ? (() => {
+            const url = message.body.slice(4).trim();
+            // Tenor share pages are HTML, not image files; embed them instead of
+            // passing the page URL to <img>, which otherwise renders a broken image.
+            const tenorId = url.match(/^https:\/\/(?:www\.)?tenor\.com\/(?:view\/[^/?#]*-)?(\d+)(?:[/?#]|$)/i)?.[1];
+            return tenorId ? (
+              <div className="w-full max-w-sm overflow-hidden rounded-lg">
+                <iframe src={"https://tenor.com/embed/" + tenorId} title="GIF enviado no chat" loading="lazy" allow="autoplay; encrypted-media" allowFullScreen className="block h-64 w-full border-0" />
+                <a href={url} target="_blank" rel="noopener noreferrer" className="block px-1 py-1 text-xs underline opacity-70">Abrir GIF no Tenor</a>
+              </div>
+            ) : (
+              <a href={url} target="_blank" rel="noopener noreferrer" className="block max-w-full">
+                <img src={url} alt="GIF enviado no chat" loading="lazy" decoding="async" className="block max-h-72 max-w-full rounded-lg object-contain" onError={(event) => { event.currentTarget.alt = "Não foi possível carregar esta imagem animada. Toque para abrir o link."; event.currentTarget.classList.add("opacity-60"); }} />
+              </a>
+            );
+          })() : <p className={cn("whitespace-pre-wrap break-words text-sm", message.deleted_at && "italic opacity-70")}>{message.body}</p>}
           {message.attachment_path && <Attachment message={message} />}
           <div className="mt-1 flex items-center justify-end gap-1 text-[10px] opacity-65">
             {message.edited_at && <span>editada</span>}
