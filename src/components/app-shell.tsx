@@ -331,6 +331,15 @@ export function AppShell({ children }: { children: ReactNode }) {
             <Logo className="[&_img]:h-8" />
           </div>
           <div className="ml-auto flex items-center gap-2">
+            <Link
+              to="/chat"
+              aria-label="Abrir Chat"
+              title="Chat"
+              className="inline-flex h-9 items-center justify-center gap-2 rounded-lg bg-primary px-3 text-primary-foreground hover:opacity-90"
+            >
+              <MessageSquare className="h-4.5 w-4.5" />
+              <span className="hidden text-sm font-semibold sm:inline">Chat</span>
+            </Link>
             <button
               onClick={toggleTheme}
               className="grid h-9 w-9 place-items-center rounded-lg hover:bg-muted"
